@@ -118,5 +118,6 @@ def stream_track(track_id: int, request: Request, db: Session = Depends(get_db))
             "Content-Length": str(chunk_size),
             "Content-Type": "audio/mpeg",
             "Cache-Control": "no-cache", # Prevents the "stuck at 0" cache bug
+            "Access-Control-Allow-Origin": "*",
         },
     )

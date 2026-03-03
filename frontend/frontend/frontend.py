@@ -4,6 +4,7 @@ import random
 import asyncio
 from datetime import datetime, timedelta
 import time
+from .components.equalizer.equalizer import equalizer_ui
 
 class Track(rx.Base):
     title: str
@@ -233,6 +234,7 @@ def index() -> rx.Component:
             on_time_update=State.update_time,
             on_ended=State.next_track,
             controls=False,
+            custom_attrs={"crossOrigin": "anonymous"}
         ),
 
         # 🌟 Header (Top Left)
@@ -245,72 +247,87 @@ def index() -> rx.Component:
             spacing="3",
         ),
 
-        # 2. Main Layout (Scrollable Track List)
+        # 2. Main Layout (Scrollable Track List + Equalizer)
         rx.center(
-            rx.vstack(
-                rx.hstack(
-                    rx.heading("Your Library", size="5", font_weight="600"),
-                    rx.spacer(),
-                    rx.button(
-                        rx.icon(tag="folder_sync"),
-                        "Scan Local Library",
-                        on_click=State.scan_music,
-                        size="2",
-                        variant="soft",
-                        color_scheme="blue",
-                        border_radius="full",
-                        cursor="pointer",
+            rx.hstack(
+                rx.vstack(
+                    rx.hstack(
+                        rx.heading("Your Library", size="5", font_weight="600"),
+                        rx.spacer(),
+                        rx.button(
+                            rx.icon(tag="folder_sync"),
+                            "Scan Local Library",
+                            on_click=State.scan_music,
+                            size="2",
+                            variant="soft",
+                            color_scheme="blue",
+                            border_radius="full",
+                            cursor="pointer",
+                        ),
+                        width="100%",
+                        padding_bottom="1.5em",
+                        align_items="center",
+                        border_bottom="1px solid var(--gray-4)",
+                        margin_bottom="1em",
+                    ),
+                    rx.box(
+                        rx.foreach(
+                            State.tracks,
+                            lambda track: rx.hstack(
+                                rx.box(
+                                    rx.icon(tag="play", size=18),
+                                    padding="0.8em",
+                                    border_radius="full",
+                                    background="var(--accent-3)",
+                                    color="var(--accent-11)",
+                                    cursor="pointer",
+                                    _hover={"background": "var(--accent-4)", "transform": "scale(1.05)"},
+                                    transition="all 0.2s ease",
+                                    on_click=lambda: State.play_track(track),
+                                ),
+                                rx.vstack(
+                                    rx.text(track.title, font_weight="600", size="3"),
+                                    rx.text(track.artist, size="2", color="gray"),
+                                    align_items="start",
+                                    spacing="1",
+                                ),
+                                width="100%",
+                                padding="1em",
+                                border_radius="12px",
+                                _hover={"background": "var(--gray-3)"},
+                                transition="background 0.2s ease",
+                                align_items="center",
+                                spacing="4",
+                            )
+                        ),
+                        width="100%",
+                        display="flex",
+                        flex_direction="column",
+                        gap="0.5em",
+                        max_height="60vh",
+                        overflow_y="auto",
+                        padding_right="0.5em",
                     ),
                     width="100%",
-                    padding_bottom="1.5em",
-                    align_items="center",
-                    border_bottom="1px solid var(--gray-4)",
-                    margin_bottom="1em",
+                    padding="2.5em",
+                    background="var(--gray-2)",
+                    border_radius="24px",
+                    box_shadow="0 10px 40px rgba(0,0,0,0.1)",
+                    flex="1",
                 ),
-                rx.box(
-                    rx.foreach(
-                        State.tracks,
-                        lambda track: rx.hstack(
-                            rx.box(
-                                rx.icon(tag="play", size=18),
-                                padding="0.8em",
-                                border_radius="full",
-                                background="var(--accent-3)",
-                                color="var(--accent-11)",
-                                cursor="pointer",
-                                _hover={"background": "var(--accent-4)", "transform": "scale(1.05)"},
-                                transition="all 0.2s ease",
-                                on_click=lambda: State.play_track(track),
-                            ),
-                            rx.vstack(
-                                rx.text(track.title, font_weight="600", size="3"),
-                                rx.text(track.artist, size="2", color="gray"),
-                                align_items="start",
-                                spacing="1",
-                            ),
-                            width="100%",
-                            padding="1em",
-                            border_radius="12px",
-                            _hover={"background": "var(--gray-3)"},
-                            transition="background 0.2s ease",
-                            align_items="center",
-                            spacing="4",
-                        )
-                    ),
+                
+                # Right Side: Equalizer Component
+                rx.vstack(
+                    equalizer_ui(),
                     width="100%",
-                    display="flex",
-                    flex_direction="column",
-                    gap="0.5em",
-                    max_height="60vh",
-                    overflow_y="auto",
-                    padding_right="0.5em",
+                    flex="1",
                 ),
+                
+                # Container settings
                 width="100%",
-                max_width="800px",
-                padding="2.5em",
-                background="var(--gray-2)",
-                border_radius="24px",
-                box_shadow="0 10px 40px rgba(0,0,0,0.1)",
+                max_width="1200px",
+                align_items="stretch",
+                spacing="6",
                 margin_bottom="150px", # Space for bottom player
             ),
             width="100%",
