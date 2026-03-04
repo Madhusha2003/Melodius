@@ -2,7 +2,10 @@ import reflex as rx
 import json
 import os
 
-DATA_FILE = "user_data.json"
+# Ensure the file is always saved in the frontend directory regardless of where it's run from
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA_FILE = os.path.join(BASE_DIR, "user_data.json")
+
 class EqualizerState(rx.State):
     """Handles the Web Audio API Equalizer directly connected to the React Player."""
     band_64: int = 0
@@ -117,14 +120,24 @@ class EqualizerState(rx.State):
         if self.is_eq_active :
             self.is_eq_initialized = False
 
+    def initialize_engine(self):
+        """Injects the JS Audio Context and sets initial values from saved state."""
+        if self.is_eq_initialized or not self.is_eq_active:
+            return
             
-    def toggle_eq(self):
-        self.is_eq_active = not self.is_eq_active
-        self.save_eq_data()
+        self.is_eq_initialized = True
         
-        if not self.is_eq_initialized:
-            self.is_eq_initialized = True
-            script = """
+        init_state_js = f"""
+            window.savedEqState = {{
+                bands: [{self.band_64}, {self.band_125}, {self.band_250}, {self.band_500}, {self.band_1k}, {self.band_2k}, {self.band_4k}, {self.band_8k}],
+                bass: {self.bass_boost},
+                clarity: {self.clarity},
+                virtualizer: {self.virtualizer},
+                loudness: {self.loudness}
+            }};
+        """
+        
+        main_script = """
             console.log('init_equalizer triggered');
             var p = document.getElementById('audio-player');
             if (p) {
@@ -264,7 +277,19 @@ class EqualizerState(rx.State):
                             }
                         };
                         
-                        console.log('Equalizer Web Audio API initialized successfully!');
+                        // --- APPLY INITIAL VALUES IMMEDIATELY ---
+                        if (window.savedEqState) {
+                            for (var i=0; i<8; i++) {
+                                window.updateEQ(i, window.savedEqState.bands[i]);
+                            }
+                            window.updateAdvanced('bass', window.savedEqState.bass);
+                            window.updateAdvanced('clarity', window.savedEqState.clarity);
+                            window.updateAdvanced('virtualizer', window.savedEqState.virtualizer);
+                            window.updateAdvanced('loudness', window.savedEqState.loudness);
+
+                        }
+                        
+                        console.log('Equalizer Web Audio API initialized successfully with saved state!');
                     } catch(e) {
                         console.error('Failed to initialize AudioContext:', e);
                     }
@@ -277,8 +302,18 @@ class EqualizerState(rx.State):
             } else {
                 console.error('Could not find element with id audio-player');
             }
-            """
-            return rx.call_script(script)
+        """
+        
+        # Combine init_state_js with main_script
+        return rx.call_script(init_state_js + main_script)
+
+            
+    def toggle_eq(self):
+        self.is_eq_active = not self.is_eq_active
+        self.save_eq_data()
+        
+        if not self.is_eq_initialized:
+            return self.initialize_engine()
         else:
             js_bool = 'true' if self.is_eq_active else 'false'
             return rx.call_script(f"if (window.toggleEQ) window.toggleEQ({js_bool});")
@@ -287,7 +322,8 @@ def eq_slider(name: str, band_idx: int, val: int) -> rx.Component:
     return rx.vstack(
         rx.text(val, size="1", font_weight="bold", color="var(--accent-11)"),
         rx.slider(
-            default_value=[0],
+            default_value=[val],
+            value=[val],
             min=-12,
             max=12,
             orientation="vertical",

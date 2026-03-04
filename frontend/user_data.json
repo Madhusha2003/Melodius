@@ -1,11 +1,11 @@
 {
     "last_played_track": {
-        "title": "24K_Magic_-_R3hab_Remix",
+        "title": "Camila_Cabello_ft_Young_Thug_-_Havana_(Jesusful.com)",
         "artist": "Unknown Artist",
-        "url": "http://localhost:8001/stream/5?t=0.5552196564142641",
-        "duration": 160.10448979591837
+        "url": "http://localhost:8001/stream/54?t=0.30960983982809864",
+        "duration": 218.544
     },
-    "last_played_time": 1.116655,
+    "last_played_time": 15.061333,
     "is_shuffled": false,
     "volume": 1.0,
     "eq": {

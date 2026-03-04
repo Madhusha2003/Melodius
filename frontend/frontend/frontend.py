@@ -78,7 +78,7 @@ class State(rx.State):
             return [State.fetch_tracks, State.find_player_by_url]
         else:
             self.current_time = 0.0
-            return State.fetch_tracks
+            return [State.fetch_tracks]
 
     def hide_ghost_box(self):
         """🚀 THE QUICK FIX: Hides the engine immediately on load."""
@@ -141,8 +141,8 @@ class State(rx.State):
         yield rx.call_script(script)
         await asyncio.sleep(0.1)
         yield State.tick_time()
-        #from .components.equalizer.equalizer import EqualizerState
-        #yield EqualizerState.apply_eq()
+        from .components.equalizer.equalizer import EqualizerState
+        yield EqualizerState.apply_eq()
 
     # App timer
     @rx.event(background=True)
@@ -207,7 +207,8 @@ class State(rx.State):
             if not self.is_playing:
                 self.save_data()  # Save progress when paused
             else:
-                return State.tick_time
+                yield State.tick_time
+                yield EqualizerState.initialize_engine()
 
     def sync_time(self, data: dict):
         # Reflex catches the 'detail' from our JS CustomEvent here
