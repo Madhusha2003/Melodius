@@ -5,7 +5,12 @@ import asyncio
 from datetime import datetime, timedelta
 import time
 from .components.equalizer.equalizer import equalizer_ui
+from .components.visualizer.visualizer import visualizer_ui
+from .components.equalizer.equalizer import EqualizerState
+import json
+import os
 
+DATA_FILE = "user_data.json"
 class Track(rx.Base):
     title: str
     artist: str
@@ -14,6 +19,11 @@ class Track(rx.Base):
 
 class State(rx.State):
     tracks: list[Track] = []
+    
+    # Persistent Data
+    last_played_track: dict = {}
+    last_played_time: float = 0.0
+    
     current_track: Track = Track(title="", artist="", url="", duration=0.0)
     is_playing: bool = False
     is_shuffled: bool = False
@@ -23,8 +33,68 @@ class State(rx.State):
     duration: float = 0.0
     volume: float = 1.0
     is_dragging: bool = False
+    
+    def save_data(self):
+        """Saves current state to JSON."""
+        data = {}
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    data = json.load(f)
+            except:
+                pass
+                
+        data["last_played_track"] = self.last_played_track
+        data["last_played_time"] = self.last_played_time
+        data["is_shuffled"] = self.is_shuffled
+        data["volume"] = self.volume
+        
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
 
     _timer_running: bool = False
+
+    def on_load(self):
+        """Restore previous session data from JSON if available."""
+        self.is_playing = False
+        self._timer_running = False
+        
+        # Load from JSON
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    data = json.load(f)
+                    self.last_played_track = data.get("last_played_track", {})
+                    self.last_played_time = float(data.get("last_played_time", 0.0))
+                    self.is_shuffled = bool(data.get("is_shuffled", False))
+                    self.volume = float(data.get("volume", 1.0))
+            except Exception as e:
+                print("Error loading frontend data:", e)
+        
+        if self.last_played_track and self.last_played_track.get("title"):
+            self.current_track = Track(**self.last_played_track)
+            self.duration = float(self.current_track.duration)
+            self.current_time = float(self.last_played_time)
+            return [State.fetch_tracks, State.find_player_by_url]
+        else:
+            self.current_time = 0.0
+            return State.fetch_tracks
+
+    def hide_ghost_box(self):
+        """🚀 THE QUICK FIX: Hides the engine immediately on load."""
+        script = """
+        // Find the first video or audio element rendered by Reflex
+        var p = document.querySelector('video, audio');
+        if (p) {
+            p.style.display = 'none';
+            p.style.width = '0px';
+            p.style.height = '0px';
+            p.style.position = 'fixed';
+            p.style.top = '-9999px';
+            console.log('Ghost box hidden by simple selector.');
+        }
+        """
+        return rx.call_script(script)
 
     async def fetch_tracks(self):
         # Fetching from your FastAPI backend
@@ -43,23 +113,36 @@ class State(rx.State):
                 await self.fetch_tracks()
     
     # THE GREAT FIX AFTER MANY TRIES 👌👌👌👌👌👌👌👌👌👌👌
-    def find_player_by_url(self):
+    @rx.event(background=True)
+    async def find_player_by_url(self):
         # 🚀 THE FIX: Target the 'video' tag that starts with your stream URL
         # This will find it even if the class is 'css-1hyfx7x'
         base_url = "http://localhost:8001/stream/"
         
         script = f"""
-        var p = document.querySelector('video[src^="{base_url}"]');
-        if (p) {{
-            p.id = 'audio-player';
-            p.style.display = 'none';
-            p.style.width = '0px';
-            p.style.height = '0px';
-            console.log('Found and hidden by URL!');
-            console.log('ID "audio-player" successfully mapped to media element!');
-        }}
+        setTimeout(() => {{
+            var p = document.querySelector('video[src^="{base_url}"]');
+            if (p) {{
+                p.id = 'audio-player';
+                p.style.display = 'none';
+                p.style.width = '0px';
+                p.style.height = '0px';
+                console.log('Found and hidden by URL!');
+                console.log('ID "audio-player" successfully mapped to media element!');
+                
+                // If we have a saved time, restore it
+                if ({self.current_time} > 0 && Math.abs(p.currentTime - {self.current_time}) > 1) {{
+                    p.currentTime = {self.current_time};
+                    console.log('Time restored to: ' + {self.current_time});
+                }}
+            }}
+        }}, 500);
         """
-        return rx.call_script(script)
+        yield rx.call_script(script)
+        await asyncio.sleep(0.1)
+        yield State.tick_time()
+        #from .components.equalizer.equalizer import EqualizerState
+        #yield EqualizerState.apply_eq()
 
     # App timer
     @rx.event(background=True)
@@ -77,8 +160,7 @@ class State(rx.State):
                     break
                 
                 # Ask the hardware for the real time.
-                yield State.update_time
-                print(State.update_time)
+                yield State.update_time()
 
                 # Check if song is finished (hardware based)
                 if self.current_time >= (self.duration - 0.5) and self.duration > 0:
@@ -92,33 +174,46 @@ class State(rx.State):
 
     def play_track(self, track: Track):
         """Resets everything for a fresh start."""
+        new_url = f"{track.url.split('?')[0]}?t={random.random()}"
         self.current_track = Track(
             title=track.title,
             artist=track.artist,
-            url=f"{track.url.split('?')[0]}?t={random.random()}",
+            url=new_url,
             duration=track.duration
         )
         self.duration = float(track.duration)
         
+        self.last_played_track = {
+            "title": track.title,
+            "artist": track.artist,
+            "url": new_url,
+            "duration": track.duration
+        }
+        
         # 🚀 RESET: Start from 0
         self.current_time = 0.0
+        self.last_played_time = 0.0
         self.is_playing = True
+        
+        self.save_data()
         
         # 🚀 START: Trigger the manual timer
         return [State.tick_time, State.find_player_by_url]
 
     def toggle_play(self):
         """Pauses or Resumes the manual timer."""
-        self.is_playing = not self.is_playing
-        if self.is_playing :
-            # 🚀 RESUME: Restart the loop
-            return State.tick_time
+        if self.current_track.url != "":
+            self.is_playing = not self.is_playing
+            if not self.is_playing:
+                self.save_data()  # Save progress when paused
+            else:
+                return State.tick_time
 
     def sync_time(self, data: dict):
         # Reflex catches the 'detail' from our JS CustomEvent here
         if not self.is_dragging:
             self.current_time = float(data.get("time", 0))
-            print(f"Current Hardware Time: {self.current_time}")
+            self.last_played_time = float(self.current_time)
 
     def update_time(self):
         """Fetches the actual hardware time and sends it to sync_time."""
@@ -134,6 +229,7 @@ class State(rx.State):
     
     def toggle_shuffle(self):
         self.is_shuffled = not self.is_shuffled
+        self.save_data()
 
     def next_track(self):
         if not self.tracks or not self.current_track.title:
@@ -161,6 +257,7 @@ class State(rx.State):
 
     def set_volume(self, value: list[float]):
         self.volume = value[0] / 100
+        self.save_data()
 
     def go_to_time(self, time: float):
         self.current_time = time
@@ -170,10 +267,13 @@ class State(rx.State):
         target_time = float(value[0])
         self.is_dragging = False
         self.is_playing = True  
+        self.last_played_time = target_time
+        self.save_data()
         # 🚀 We do two things: 1. Jump the music, 2. Tell the UI to refresh immediately
         return [
             rx.call_script(f"document.getElementById('audio-player').currentTime = {target_time};"),
-            State.go_to_time(target_time) 
+            State.go_to_time(target_time),
+            State.tick_time 
         ]
     
     def seek_from_bar(self, percent: int):
@@ -231,7 +331,7 @@ def index() -> rx.Component:
             src=State.current_track.url,
             playing=State.is_playing,
             volume=State.volume,
-            on_time_update=State.update_time,
+            #on_time_update=State.update_time,
             on_ended=State.next_track,
             controls=False,
             custom_attrs={"crossOrigin": "anonymous"}
@@ -316,11 +416,16 @@ def index() -> rx.Component:
                     flex="1",
                 ),
                 
-                # Right Side: Equalizer Component
-                rx.vstack(
-                    equalizer_ui(),
-                    width="100%",
-                    flex="1",
+                # Right Side: Visualizer and Equalizer Component
+                rx.cond(
+                    State.current_track.url != "",
+                    rx.vstack(
+                        visualizer_ui(),
+                        equalizer_ui(),
+                        width="100%",
+                        flex="1",
+                        spacing="6",
+                    )
                 ),
                 
                 # Container settings
@@ -336,7 +441,7 @@ def index() -> rx.Component:
 
         # 🚀 3. THE VISUAL UI (Only show when a song is picked)
         rx.cond(
-            State.current_track.title != "",
+            State.current_track.url != "",
             rx.box(
                 rx.hstack(
                     # Left: Track Info
@@ -450,7 +555,8 @@ def index() -> rx.Component:
         color="white",
         min_height="100vh",
         overflow="hidden",
+    on_mount=[State.fetch_tracks, State.hide_ghost_box],
     )
 
 app = rx.App()
-app.add_page(index)
+app.add_page(index, on_load=[State.on_load])

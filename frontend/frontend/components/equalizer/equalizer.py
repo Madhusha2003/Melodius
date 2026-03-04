@@ -1,5 +1,8 @@
 import reflex as rx
+import json
+import os
 
+DATA_FILE = "user_data.json"
 class EqualizerState(rx.State):
     """Handles the Web Audio API Equalizer directly connected to the React Player."""
     band_64: int = 0
@@ -20,6 +23,52 @@ class EqualizerState(rx.State):
     is_eq_initialized: bool = False
     is_eq_active: bool = False
 
+    def reload_eq(self):
+        self.is_eq_initialized = False
+        
+    def load_eq_data(self):
+        """Loads data from JSON file on boot."""
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    data = json.load(f)
+                    eq_data = data.get("eq", {})
+                    self.band_64 = eq_data.get("band_64", 0)
+                    self.band_125 = eq_data.get("band_125", 0)
+                    self.band_250 = eq_data.get("band_250", 0)
+                    self.band_500 = eq_data.get("band_500", 0)
+                    self.band_1k = eq_data.get("band_1k", 0)
+                    self.band_2k = eq_data.get("band_2k", 0)
+                    self.band_4k = eq_data.get("band_4k", 0)
+                    self.band_8k = eq_data.get("band_8k", 0)
+                    
+                    self.bass_boost = eq_data.get("bass_boost", 0)
+                    self.clarity = eq_data.get("clarity", 0)
+                    self.virtualizer = eq_data.get("virtualizer", 0)
+                    self.loudness = eq_data.get("loudness", 0)
+                    self.is_eq_active = eq_data.get("is_active", False)
+            except Exception as e:
+                print("Error loading EQ data:", e)
+                
+    def save_eq_data(self):
+        """Saves current state to JSON."""
+        data = {}
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r") as f:
+                    data = json.load(f)
+            except:
+                pass
+                
+        data["eq"] = {
+            "band_64": self.band_64, "band_125": self.band_125, "band_250": self.band_250, "band_500": self.band_500,
+            "band_1k": self.band_1k, "band_2k": self.band_2k, "band_4k": self.band_4k, "band_8k": self.band_8k,
+            "bass_boost": self.bass_boost, "clarity": self.clarity, "virtualizer": self.virtualizer, "loudness": self.loudness,
+            "is_active": self.is_eq_active
+        }
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+
     def update_advanced(self, value: list[int], knob_type: str):
         val = value[0] if isinstance(value, list) else value
         if knob_type == "bass":
@@ -30,6 +79,9 @@ class EqualizerState(rx.State):
             self.virtualizer = val
         elif knob_type == "loudness":
             self.loudness = val
+            
+        # Save to user_data.json
+        self.save_eq_data()
             
         # Send update to JS Audio engine
         return rx.call_script(f"if (window.updateAdvanced) window.updateAdvanced('{knob_type}', {val});")
@@ -52,12 +104,23 @@ class EqualizerState(rx.State):
             self.band_4k = val
         elif band_idx == 7:
             self.band_8k = val
+            
+        # Save to user_data.json
+        self.save_eq_data()
         
         # We send JS to update the filter immediately
         return rx.call_script(f"if (window.updateEQ) window.updateEQ({band_idx}, {val});")
 
+    def apply_eq(self):
+        """Called automatically after reload to apply previous states without user interaction."""
+        self.load_eq_data()
+        if self.is_eq_active :
+            self.is_eq_initialized = False
+
+            
     def toggle_eq(self):
         self.is_eq_active = not self.is_eq_active
+        self.save_eq_data()
         
         if not self.is_eq_initialized:
             self.is_eq_initialized = True
