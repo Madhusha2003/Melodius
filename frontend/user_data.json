@@ -1,11 +1,11 @@
 {
     "last_played_track": {
-        "title": "Camila_Cabello_ft_Young_Thug_-_Havana_(Jesusful.com)",
+        "title": "7_rings",
         "artist": "Unknown Artist",
-        "url": "http://localhost:8001/stream/54?t=0.30960983982809864",
-        "duration": 218.544
+        "url": "http://localhost:8001/stream/6?t=0.7501466417242628",
+        "duration": 178.70367346938775
     },
-    "last_played_time": 15.061333,
+    "last_played_time": 118.662846,
     "is_shuffled": false,
     "volume": 1.0,
     "eq": {

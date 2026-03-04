@@ -559,5 +559,11 @@ def index() -> rx.Component:
     on_mount=[State.fetch_tracks, State.hide_ghost_box],
     )
 
-app = rx.App()
+global_styles = {
+    "a[href*='reflex.dev']": {
+        "display": "none !important",
+    }
+}
+
+app = rx.App(style=global_styles)
 app.add_page(index, on_load=[State.on_load])
