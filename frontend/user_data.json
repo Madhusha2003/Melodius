@@ -1,26 +1,11 @@
 {
     "last_played_track": {
-        "title": "7_rings",
+        "title": "Acapulco_Jason Derulo",
         "artist": "Unknown Artist",
-        "url": "http://localhost:8001/stream/6?t=0.7501466417242628",
-        "duration": 178.70367346938775
+        "url": "http://localhost:8001/stream/7?t=0.6994081033613289",
+        "duration": 139.75510204081633
     },
-    "last_played_time": 118.662846,
+    "last_played_time": 30.651214,
     "is_shuffled": false,
-    "volume": 1.0,
-    "eq": {
-        "band_64": 0,
-        "band_125": 0,
-        "band_250": 0,
-        "band_500": 0,
-        "band_1k": 0,
-        "band_2k": 0,
-        "band_4k": 0,
-        "band_8k": 0,
-        "bass_boost": 100,
-        "clarity": 0,
-        "virtualizer": 0,
-        "loudness": 0,
-        "is_active": true
-    }
+    "volume": 1.0
 }

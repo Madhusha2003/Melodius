@@ -1,16 +1,16 @@
 {
     "eq": {
-        "band_64": 4,
-        "band_125": -2,
-        "band_250": -5,
-        "band_500": -5,
-        "band_1k": -6,
-        "band_2k": -2,
+        "band_64": 9,
+        "band_125": 0,
+        "band_250": 0,
+        "band_500": 0,
+        "band_1k": 0,
+        "band_2k": 0,
         "band_4k": 0,
-        "band_8k": 4,
-        "bass_boost": 67,
-        "clarity": 20,
-        "virtualizer": 52,
+        "band_8k": 0,
+        "bass_boost": 100,
+        "clarity": 0,
+        "virtualizer": 0,
         "loudness": 0,
         "is_active": true
     }

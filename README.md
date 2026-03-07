@@ -24,3 +24,19 @@ Melodius is a modern music player application with a FastAPI backend and a Refle
 - Eq automatically cannot initialize when reloaded. (Low priority)
 - Visualizer is small windows just to show something. (Low priority)
 - Reading / finding songs cannot read metadata. (Medium priority)
+
+
+## Deployment
+
+- Export Data Command `$env:REFLEX_API_URL="http://127.0.0.1:8000"; reflex export --frontend-only --no-zip`
+
+    ** Note: This command is run in the venv **
+- ` pyinstaller --name "Melodius" --windowed --add-data "frontend;frontend" --add-data "backend;backend" --collect-all webview --collect-all reflex --collect-all uvicorn --hidden-import "frontend.frontend" --hidden-import "backend.main" test.py `
+
+- ` pyinstaller --name "Melodius" --windowed --add-data "frontend/.web/build/client;frontend/.web/build/client" --add-data "frontend/rxconfig.py;frontend" --add-data "frontend/frontend;frontend/frontend" --add-data "backend;backend" --exclude-module tkinter --exclude-module numpy --exclude-module pandas --collect-all webview --collect-all reflex --collect-all uvicorn --hidden-import "frontend.frontend" --hidden-import "backend.main" --hidden-import "httpx" --hidden-import "mutagen" test.py `
+                                                                                                               
+
+## Test run
+- python test.py
+- python main_app.py
+- python main_desktop.py

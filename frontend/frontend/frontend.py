@@ -97,20 +97,28 @@ class State(rx.State):
         return rx.call_script(script)
 
     async def fetch_tracks(self):
-        # Fetching from your FastAPI backend
-        async with httpx.AsyncClient() as client:
-            response = await client.get("http://localhost:8001/tracks/")
-            if response.status_code == 200:
-                self.tracks = [Track(**track) for track in response.json()]
+        # Use 127.0.0.1 instead of localhost to prevent IPv6 routing bugs in the EXE
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get("http://127.0.0.1:8001/tracks/")
+                if response.status_code == 200:
+                    self.tracks = [Track(**track) for track in response.json()]
+                else:
+                    print(f"[Melodius] Backend returned status code: {response.status_code}")
+        except Exception as e:
+            print(f"[Melodius] ERROR fetching tracks: {e}")
 
     async def scan_music(self):
-        # Trigger the backend to scan the local music folder
-        async with httpx.AsyncClient() as client:
-            # Increase timeout since mutagen extraction might take time on large libraries
-            response = await client.post("http://localhost:8001/scan/", timeout=120.0)
-            if response.status_code == 200:
-                # Refresh the UI track list
-                await self.fetch_tracks()
+        try:
+            async with httpx.AsyncClient() as client:
+                # Use 127.0.0.1 and keep the 120s timeout
+                response = await client.post("http://127.0.0.1:8001/scan/", timeout=120.0)
+                if response.status_code == 200:
+                    await self.fetch_tracks()
+                else:
+                    print(f"[Melodius] Backend scan failed with status: {response.status_code}")
+        except Exception as e:
+            print(f"[Melodius] ERROR scanning music: {e}")
     
     # THE GREAT FIX AFTER MANY TRIES 👌👌👌👌👌👌👌👌👌👌👌
     @rx.event(background=True)
@@ -198,7 +206,7 @@ class State(rx.State):
         self.save_data()
         
         # 🚀 START: Trigger the manual timer
-        return [State.tick_time, State.find_player_by_url]
+        return [State.tick_time, State.find_player_by_url, EqualizerState.initialize_engine()]
 
     def toggle_play(self):
         """Pauses or Resumes the manual timer."""
