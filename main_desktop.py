@@ -44,7 +44,7 @@ def start_backend():
     global backend_process
     print("Starting FastAPI backend (port 8000)...")
     
-    venv_python = os.path.join("backend", "venv", "Scripts", "python.exe")
+    venv_python = os.path.join("backend", ".venv_backend", "Scripts", "python.exe")
     if not os.path.exists(venv_python):
         venv_python = "python"
         

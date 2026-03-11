@@ -37,7 +37,7 @@ def create_track(track: schemas.TrackCreate, db: Session = Depends(get_db)):
     return db_track
 
 @app.get("/tracks/", response_model=list[schemas.Track])
-def read_tracks(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_tracks(skip: int = 0, limit: int = 1000, db: Session = Depends(get_db)):
     tracks = db.query(models.Track).offset(skip).limit(limit).all()
     return tracks
 

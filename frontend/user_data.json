@@ -1,11 +1,11 @@
 {
     "last_played_track": {
-        "title": "Acapulco_Jason Derulo",
-        "artist": "Unknown Artist",
-        "url": "http://localhost:8001/stream/7?t=0.6994081033613289",
-        "duration": 139.75510204081633
+        "title": "Serena - Safari 8D SLMIX.LK",
+        "artist": "Sri 8D Music",
+        "url": "http://localhost:8001/stream/236?t=0.3168328478179733",
+        "duration": 190.99958333333333
     },
-    "last_played_time": 30.651214,
-    "is_shuffled": false,
+    "last_played_time": 0.0,
+    "is_shuffled": true,
     "volume": 1.0
 }
