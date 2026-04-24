@@ -424,7 +424,7 @@ def equalizer_ui() -> rx.Component:
                 width="100%"
             ),
 
-            rx.divider(margin_y="2em", width="100%", bg="var(--gray-4)"),
+            rx.divider(margin_y="1em", width="100%", bg="var(--gray-4)"),
 
             # ADVANCED EFFECTS (ROUND KNOBS)
             rx.hstack(
@@ -440,10 +440,21 @@ def equalizer_ui() -> rx.Component:
             width="100%",
             height="100%",
             align_items="center",
+            justify="center",
         ),
         width="100%",
-        padding="2em",
+        height="100%",
+        padding="2.5em",
+        background=rx.color_mode_cond(
+            light="rgba(255, 255, 255, 0.9)", 
+            dark="rgba(15, 15, 15, 0.9)"
+        ),
+        border="1px solid",
+        border_color=rx.color_mode_cond(
+            light="rgba(0,0,0,0.05)",
+            dark="rgba(255,255,255,0.05)"
+        ),
         border_radius="24px",
-        background="var(--gray-2)",
-        box_shadow="0 10px 40px rgba(0,0,0,0.1)",
+        box_shadow="0 10px 40px rgba(0,0,0,0.05)",
+        
     )

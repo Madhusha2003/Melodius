@@ -11,12 +11,19 @@ class State(rx.State):
     """The main state for the Melodius application."""
     tracks: list[Track] = []
     search_query: str = ""
+    show_settings: bool = False
+    is_loading: bool = True
+    is_mounting: bool = False
+    
+    # Settings
+    library_directory: str = ""
+    hardware_acceleration: bool = True
     
     # Persistent Data
     last_played_track: dict = {}
     last_played_time: float = 0.0
     
-    current_track: Track = Track(title="", artist="", url="", duration=0.0)
+    current_track: Track = Track(id=0, title="", artist="", url="", duration=0.0)
     is_playing: bool = False
     is_shuffled: bool = False
     
@@ -38,6 +45,30 @@ class State(rx.State):
             if query in track.title.lower() or query in track.artist.lower()
         ]
 
+    def set_search_query(self, value: str):
+        """Explicit setter for search_query (replaces auto_setter)."""
+        self.search_query = value
+
+    def set_library_directory(self, value: str):
+        """Explicit setter for library_directory (replaces auto_setter)."""
+        self.library_directory = value
+        self.save_data()
+
+    def toggle_settings(self):
+        self.show_settings = not self.show_settings
+
+    def toggle_hardware_acceleration(self, value: bool):
+        self.hardware_acceleration = value
+        self.save_data()
+
+    def clear_player_state(self):
+        """Resets the active player state."""
+        self.current_track = Track(id=0, title="", artist="", url="", duration=0.0)
+        self.last_played_track = {}
+        self.is_playing = False
+        self.current_time = 0.0
+        self.save_data()
+
     def save_data(self):
         """Saves current state to JSON."""
         data = {}
@@ -52,6 +83,8 @@ class State(rx.State):
         data["last_played_time"] = self.last_played_time
         data["is_shuffled"] = self.is_shuffled
         data["volume"] = self.volume
+        data["library_directory"] = self.library_directory
+        data["hardware_acceleration"] = self.hardware_acceleration
         
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
@@ -69,6 +102,8 @@ class State(rx.State):
                     self.last_played_time = float(data.get("last_played_time", 0.0))
                     self.is_shuffled = bool(data.get("is_shuffled", False))
                     self.volume = float(data.get("volume", 1.0))
+                    self.library_directory = data.get("library_directory", "")
+                    self.hardware_acceleration = bool(data.get("hardware_acceleration", True))
             except Exception as e:
                 # Use console.error for client-side debugging if needed, 
                 # or just handle it silently as we do here.
@@ -78,30 +113,89 @@ class State(rx.State):
             self.current_track = Track(**self.last_played_track)
             self.duration = float(self.current_track.duration)
             self.current_time = float(self.last_played_time)
-            return [State.fetch_tracks, State.find_player_by_url]
+            return [State.fetch_tracks, State.find_player_by_url, State.finish_loading]
         else:
             self.current_time = 0.0
-            return [State.fetch_tracks]
+            return [State.fetch_tracks, State.finish_loading]
+
+    async def finish_loading(self):
+        await asyncio.sleep(1.5) # Artificial delay for splash effect
+        self.is_loading = False
+        self.is_mounting = True
 
     async def fetch_tracks(self):
         try:
             tracks_data = await MelodiusAPI.get_tracks()
             self.tracks = [Track(**track) for track in tracks_data]
         except Exception as e:
-            return rx.toast(f"Error fetching tracks: {str(e)}", color_scheme="red")
+            return rx.toast(f"Error fetching tracks: {str(e)}")
 
     async def scan_music(self):
         try:
-            yield rx.toast("Scanning library...", color_scheme="blue")
-            await MelodiusAPI.scan_music()
+            yield rx.toast("Scanning library...")
+            await MelodiusAPI.scan_music(directory=self.library_directory)
             await self.fetch_tracks()
-            yield rx.toast("Library scan complete!", color_scheme="green")
+            yield rx.toast("Library scan complete!")
         except Exception as e:
-            yield rx.toast(f"Scan failed: {str(e)}", color_scheme="red")
+            yield rx.toast(f"Scan failed: {str(e)}")
+
+    @rx.event(background=True)
+    async def select_library_directory(self):
+        """Open a native folder selection dialog and reset DB on change."""
+        import tkinter as tk
+        from tkinter import filedialog
+        import os
+        
+        # Initialize tkinter and hide main window
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        # Open directory picker
+        directory = filedialog.askdirectory(
+            initialdir=self.library_directory or os.path.expanduser("~"),
+            title="Select Music Folder"
+        )
+        
+        # Clean up
+        root.destroy()
+        
+        if directory:
+            async with self:
+                # Normalize path for the OS
+                directory = os.path.abspath(directory)
+                self.library_directory = directory
+                self.save_data()
+            
+            # 1. Reset Database
+            yield rx.toast("Resetting database for new folder...")
+            await MelodiusAPI.clear_library()
+            async with self:
+                self.clear_player_state()
+            
+            # 2. Re-scan
+            async for event in self.scan_music():
+                yield event
+
+            yield rx.toast(f"Library updated and reset to: {directory}")
+
+    async def reset_database(self):
+        """Manually clear the library storage."""
+        try:
+            yield rx.toast("Clearing library storage...")
+            await MelodiusAPI.clear_library()
+            async with self:
+                self.clear_player_state()
+            await self.fetch_tracks()
+            yield rx.toast("Library storage cleared!")
+        except Exception as e:
+            yield rx.toast(f"Reset failed: {str(e)}")
 
     @rx.event(background=True)
     async def find_player_by_url(self):
-        base_url = "http://127.0.0.1:8001/tracks/stream/"
+        # Get the API port from environment variable (consistent with api.py)
+        api_port = os.getenv("MELODIUS_API_PORT", "8001")
+        base_url = f"http://127.0.0.1:{api_port}/tracks/stream/"
         script = f"""
         setTimeout(() => {{
             var p = document.querySelector('video[src^="{base_url}"]');
@@ -147,16 +241,20 @@ class State(rx.State):
     def play_track(self, track: Track):
         new_url = f"{track.url.split('?')[0]}?t={random.random()}"
         self.current_track = Track(
+            id=track.id,
             title=track.title,
             artist=track.artist,
             url=new_url,
+            cover_url=track.cover_url,
             duration=track.duration
         )
         self.duration = float(track.duration)
         self.last_played_track = {
+            "id": track.id,
             "title": track.title,
             "artist": track.artist,
             "url": new_url,
+            "cover_url": track.cover_url,
             "duration": track.duration
         }
         self.current_time = 0.0

@@ -2,6 +2,7 @@
 fastapi>=0.136.0
 pydantic>=2.9.0
 pydantic_core>=2.20.0
+pydantic-settings
 SQLAlchemy==2.0.28 
 starlette>=1.0.0
 uvicorn==0.29.0 
@@ -11,6 +12,7 @@ mutagen==1.47.0
 sqlmodel==0.0.19
 reflex==0.9.0
 reflex-chakra>=0.8.2
+pywebview
 
 # --- Shared Dependencies (Frontend Environment) ---
 alembic==1.18.4 
