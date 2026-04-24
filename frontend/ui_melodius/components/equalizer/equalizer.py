@@ -2,9 +2,7 @@ import reflex as rx
 import json
 import os
 
-# Ensure the file is always saved in the frontend directory regardless of where it's run from
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_FILE = os.path.join(BASE_DIR, "user_data.json")
+from ...state.constants import DATA_FILE
 
 class EqualizerState(rx.State):
     """Handles the Web Audio API Equalizer directly connected to the React Player."""
