@@ -16,11 +16,15 @@ class Track(Base):
     @property
     def url(self):
         # Stream the source file directly from the FastAPI backend securely
-        return f"http://127.0.0.1:8001/tracks/stream/{self.id}"
+        import os
+        api_port = os.getenv("MELODIUS_API_PORT", "8001")
+        return f"http://127.0.0.1:{api_port}/tracks/stream/{self.id}"
 
     @property
     def cover_url(self):
         # Dynamically fetch cover from the file via the backend if it has one
         if not self.has_cover:
             return ""
-        return f"http://127.0.0.1:8001/tracks/cover/{self.id}"
+        import os
+        api_port = os.getenv("MELODIUS_API_PORT", "8001")
+        return f"http://127.0.0.1:{api_port}/tracks/cover/{self.id}"

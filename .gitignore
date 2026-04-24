@@ -24,6 +24,7 @@ share/python-wheels/
 MANIFEST
 **/.states/
 **/.web/
+/python_11
 
 
 # Virtual environments

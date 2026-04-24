@@ -22,17 +22,64 @@ except ImportError:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration & Port Management
 # ---------------------------------------------------------------------------
-# In production Reflex serves frontend + state backend on one port
-REFLEX_PORT = 8000   # Reflex single-port (frontend + state backend)
-FASTAPI_PORT = 8001  # Your FastAPI data backend
+BASE_PAIRS = [
+    (8000, 8001),
+    (8100, 8101),
+    (8200, 8201),
+    (8300, 8301),
+]
 
+CONFIG_FILE = "config.json"
+
+# These will be set dynamically in main()
+REFLEX_PORT = 8000
+FASTAPI_PORT = 8001
 APP_URL = f"http://127.0.0.1:{REFLEX_PORT}"
 
 # Process handles for cleanup
 backend_process = None
 frontend_process = None
+
+
+def is_free(port: int) -> bool:
+    """Return True if port is available."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", port)) != 0
+
+
+def find_port_pair():
+    """Finds a free pair of ports, optionally reusing from config."""
+    # 1. Try to reuse last working ports
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+                ui_p = config.get("ui_port")
+                api_p = config.get("api_port")
+                if ui_p and api_p and is_free(ui_p) and is_free(api_p):
+                    print(f"Reusing ports from {CONFIG_FILE}: UI={ui_p}, API={api_p}")
+                    return ui_p, api_p
+        except Exception:
+            pass
+
+    # 2. Fallback to predefined pairs
+    for ui_p, api_p in BASE_PAIRS:
+        if is_free(ui_p) and is_free(api_p):
+            return ui_p, api_p
+
+    raise RuntimeError("No free port pairs available in the 8000-8301 range.")
+
+
+def save_ports(ui_p, api_p):
+    """Saves the chosen ports to config.json."""
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump({"ui_port": ui_p, "api_port": api_p}, f)
+    except Exception as e:
+        print(f"Warning: Could not save {CONFIG_FILE}: {e}")
 
 # ---------------------------------------------------------------------------
 # Hardware acceleration (reads user preference from user_data.json)
@@ -112,33 +159,45 @@ atexit.register(cleanup)
 # ---------------------------------------------------------------------------
 # Server launchers
 # ---------------------------------------------------------------------------
-def start_backend():
-    """Launch the FastAPI / Uvicorn backend on FASTAPI_PORT."""
+def start_backend(port: int):
+    """Launch the FastAPI / Uvicorn backend on port."""
     global backend_process
-    print(f"Starting FastAPI backend (port {FASTAPI_PORT})...")
+    print(f"Starting FastAPI backend (port {port})...")
+    
+    # Ensure environment is passed
+    env = os.environ.copy()
+    
     backend_process = subprocess.Popen(
         [
             sys.executable, "-m", "uvicorn",
             "main:app",
             "--host", "127.0.0.1",
-            "--port", str(FASTAPI_PORT),
+            "--port", str(port),
         ],
         cwd="backend",
+        env=env,
     )
 
 
-def start_frontend():
+def start_frontend(ui_port: int, api_port: int):
     """Launch the Reflex app in production single-port mode."""
     global frontend_process
-    print(f"Starting Reflex app (single-port: {REFLEX_PORT})...")
+    print(f"Starting Reflex app (single-port: {ui_port})...")
+    
+    # Pass ports to Reflex via environment variables
+    env = os.environ.copy()
+    env["REFLEX_PORT"] = str(ui_port)
+    env["MELODIUS_API_PORT"] = str(api_port)
+    
     frontend_process = subprocess.Popen(
         [
             sys.executable, "-m", "reflex", "run",
             "--env", "prod",
             "--single-port",
-            "--backend-port", str(REFLEX_PORT),
+            "--backend-port", str(ui_port),
         ],
         cwd="frontend",
+        env=env,
     )
 
 
@@ -146,22 +205,23 @@ def start_frontend():
 # Entry point
 # ---------------------------------------------------------------------------
 def main():
+    global REFLEX_PORT, FASTAPI_PORT, APP_URL
     print("--- Melodius Desktop Launcher ---")
     setup_hardware_acceleration()
 
-    # Guard against port collisions
-    busy_ports = [
-        p for p in (REFLEX_PORT, FASTAPI_PORT)
-        if is_port_open(p)
-    ]
-    if busy_ports:
-        print(f"ERROR: Port(s) already in use: {busy_ports}")
-        print("Close the conflicting applications and try again.")
+    # Find and assign ports
+    try:
+        REFLEX_PORT, FASTAPI_PORT = find_port_pair()
+        APP_URL = f"http://127.0.0.1:{REFLEX_PORT}"
+        print(f"Using ports: UI={REFLEX_PORT}, API={FASTAPI_PORT}")
+        save_ports(REFLEX_PORT, FASTAPI_PORT)
+    except Exception as e:
+        print(f"FATAL ERROR: {e}")
         sys.exit(1)
 
     # Launch servers
-    start_backend()
-    start_frontend()
+    start_backend(FASTAPI_PORT)
+    start_frontend(REFLEX_PORT, FASTAPI_PORT)
 
     # Wait for both to be ready
     backend_ok = wait_for_server("FastAPI Backend", FASTAPI_PORT)

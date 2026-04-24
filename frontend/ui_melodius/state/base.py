@@ -193,7 +193,9 @@ class State(rx.State):
 
     @rx.event(background=True)
     async def find_player_by_url(self):
-        base_url = "http://127.0.0.1:8001/tracks/stream/"
+        # Get the API port from environment variable (consistent with api.py)
+        api_port = os.getenv("MELODIUS_API_PORT", "8001")
+        base_url = f"http://127.0.0.1:{api_port}/tracks/stream/"
         script = f"""
         setTimeout(() => {{
             var p = document.querySelector('video[src^="{base_url}"]');

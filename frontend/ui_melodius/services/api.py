@@ -1,5 +1,9 @@
+import os
 import httpx
 from pydantic import BaseModel
+
+# Get the API port from environment variable (set by launcher)
+api_port = os.getenv("MELODIUS_API_PORT", "8002")
 
 class Track(BaseModel):
     id: int = 0
@@ -10,7 +14,7 @@ class Track(BaseModel):
     duration: float = 0.0
 
 class MelodiusAPI:
-    BASE_URL = "http://127.0.0.1:8001"
+    BASE_URL = f"http://127.0.0.1:{api_port}"
 
     @classmethod
     async def get_tracks(cls):
