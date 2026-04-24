@@ -49,10 +49,7 @@ def library_view():
                                     border_radius="8px",
                                 )
                             ),
-                            cursor="pointer",
-                            _hover={"transform": "scale(1.05)"},
                             transition="all 0.2s ease",
-                            on_click=lambda: State.play_track(track),
                         ),
                         rx.vstack(
                             rx.text(track.title, font_weight="600", size="3"),
@@ -63,10 +60,15 @@ def library_view():
                         width="100%",
                         padding="1em",
                         border_radius="12px",
-                        _hover={"background": "var(--gray-3)"},
-                        transition="background 0.2s ease",
+                        _hover={
+                            "background": "var(--gray-3)",
+                            "transform": "translateX(4px)",
+                        },
+                        transition="all 0.2s ease",
                         align_items="center",
                         spacing="4",
+                        cursor="pointer",
+                        on_click=lambda: State.play_track(track),
                     )
                 ),
                 width="100%",
@@ -99,10 +101,9 @@ def library_view():
         width="100%",
         padding="2.5em",
         background=rx.color_mode_cond(
-            light="rgba(255, 255, 255, 0.7)", 
-            dark="rgba(15, 15, 15, 0.7)"
+            light="rgba(255, 255, 255, 0.9)", 
+            dark="rgba(15, 15, 15, 0.9)"
         ),
-        backdrop_filter="blur(20px)",
         border="1px solid",
         border_color=rx.color_mode_cond(
             light="rgba(0,0,0,0.05)",

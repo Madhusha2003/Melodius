@@ -12,8 +12,7 @@ def settings_view():
                 "left": 0,
                 "width": "100vw",
                 "height": "100vh",
-                "background": "rgba(0, 0, 0, 0.4)",
-                "backdrop-filter": "blur(8px)",
+                "background": "rgba(0, 0, 0, 0.7)",
                 "z-index": 1000,
                 "transition": "all 0.3s ease-in-out",
                 "opacity": rx.cond(State.show_settings, "1", "0"),
@@ -90,21 +89,53 @@ def settings_view():
             
             rx.divider(width="100%"),
             
-            # Appearance
+            # Appearance & Performance
             rx.vstack(
-                rx.text("Appearance", size="3", font_weight="bold"),
-                rx.hstack(
-                    rx.text("Dark Mode", size="2"),
-                    rx.spacer(),
-                    rx.switch(
-                        checked=rx.color_mode == "dark",
-                        on_change=rx.toggle_color_mode,
-                        size="1"
+                rx.text("Appearance & Performance", size="3", font_weight="bold"),
+                rx.vstack(
+                    rx.hstack(
+                        rx.text("Dark Mode", size="2"),
+                        rx.spacer(),
+                        rx.switch(
+                            checked=rx.color_mode == "dark",
+                            on_change=rx.toggle_color_mode,
+                            size="1"
+                        ),
+                        width="100%",
+                    ),
+                    rx.divider(width="100%", bg="var(--gray-4)"),
+                    rx.vstack(
+                        rx.hstack(
+                            rx.vstack(
+                                rx.text("Hardware Acceleration", size="2"),
+                                rx.text("Uses GPU for smoother animations. Disable for lower power/GPU usage.", size="1", color="gray"),
+                                align_items="start",
+                                spacing="0",
+                            ),
+                            rx.spacer(),
+                            rx.switch(
+                                checked=State.hardware_acceleration,
+                                on_change=State.toggle_hardware_acceleration,
+                                size="1"
+                            ),
+                            width="100%",
+                            align_items="center",
+                        ),
+                        rx.text(
+                            "Requires app restart to take effect", 
+                            size="1", 
+                            color="var(--accent-9)",
+                            font_style="italic",
+                            margin_top="0.5em"
+                        ),
+                        width="100%",
+                        align_items="start",
                     ),
                     width="100%",
-                    padding="0.8em",
+                    padding="1em",
                     background="var(--gray-3)",
                     border_radius="12px",
+                    spacing="3",
                 ),
                 width="100%",
                 align_items="start",
@@ -167,7 +198,6 @@ def settings_view():
                 "z-index": 1001,
                 "transition": "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
                 "border": "1px solid var(--gray-4)",
-                "backdrop-filter": "blur(20px)",
             },
             spacing="4",
         ),

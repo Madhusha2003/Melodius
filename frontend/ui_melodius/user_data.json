@@ -10,20 +10,21 @@
         "band_8k": -12,
         "bass_boost": 49,
         "clarity": 25,
-        "virtualizer": 49,
+        "virtualizer": 15,
         "loudness": 0,
         "is_active": false
     },
     "last_played_track": {
-        "id": 107,
-        "title": "Habits (Stay High) - The Chainsmokers Radio Edit",
-        "artist": "Tove Lo, The Chainsmokers",
-        "url": "http://127.0.0.1:8001/tracks/stream/107?t=0.4632075818500708",
-        "cover_url": "http://127.0.0.1:8001/tracks/cover/107",
-        "duration": 263.47102040816327
+        "id": 190,
+        "title": "Old Town Road - Diplo Remix",
+        "artist": "Lil Nas X, Billy Ray Cyrus, Diplo",
+        "url": "http://127.0.0.1:8001/tracks/stream/190?t=0.4312587756199048",
+        "cover_url": "http://127.0.0.1:8001/tracks/cover/190",
+        "duration": 204.12081632653062
     },
-    "last_played_time": 0.0,
+    "last_played_time": 84.810884,
     "is_shuffled": true,
     "volume": 0.28,
-    "library_directory": ""
+    "library_directory": "",
+    "hardware_acceleration": true
 }

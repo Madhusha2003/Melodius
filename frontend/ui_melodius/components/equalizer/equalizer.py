@@ -446,10 +446,9 @@ def equalizer_ui() -> rx.Component:
         height="100%",
         padding="2.5em",
         background=rx.color_mode_cond(
-            light="rgba(255, 255, 255, 0.7)", 
-            dark="rgba(15, 15, 15, 0.7)"
+            light="rgba(255, 255, 255, 0.9)", 
+            dark="rgba(15, 15, 15, 0.9)"
         ),
-        backdrop_filter="blur(20px)",
         border="1px solid",
         border_color=rx.color_mode_cond(
             light="rgba(0,0,0,0.05)",

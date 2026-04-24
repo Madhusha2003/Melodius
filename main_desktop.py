@@ -5,6 +5,7 @@ import subprocess
 import atexit
 import socket
 import psutil
+import json
 
 
 def wait_for_server(name, port, timeout=30):
@@ -57,6 +58,29 @@ def cleanup():
         kill_process_tree(frontend_process.pid)
 
 atexit.register(cleanup)
+
+# Dynamically set hardware acceleration based on user settings
+def setup_hardware_acceleration():
+    data_path = os.path.join("frontend", "ui_melodius", "user_data.json")
+    hw_accel = True # Default
+    if os.path.exists(data_path):
+        try:
+            with open(data_path, "r") as f:
+                data = json.load(f)
+                hw_accel = data.get("hardware_acceleration", True)
+        except:
+            pass
+    
+    if not hw_accel:
+        print("Hardware acceleration is DISABLED (Low GPU mode)")
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = "--disable-gpu --disable-gpu-compositing --disable-gpu-rasterization --disable-software-rasterizer"
+    else:
+        print("Hardware acceleration is ENABLED")
+        # Ensure any previous disable flags are cleared for this session
+        if "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" in os.environ:
+            del os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"]
+
+setup_hardware_acceleration()
 
 def start_backend():
     global backend_process

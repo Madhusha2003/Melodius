@@ -17,6 +17,7 @@ class State(rx.State):
     
     # Settings
     library_directory: str = ""
+    hardware_acceleration: bool = True
     
     # Persistent Data
     last_played_track: dict = {}
@@ -46,6 +47,10 @@ class State(rx.State):
     def toggle_settings(self):
         self.show_settings = not self.show_settings
 
+    def toggle_hardware_acceleration(self, value: bool):
+        self.hardware_acceleration = value
+        self.save_data()
+
     def clear_player_state(self):
         """Resets the active player state."""
         self.current_track = Track(id=0, title="", artist="", url="", duration=0.0)
@@ -69,6 +74,7 @@ class State(rx.State):
         data["is_shuffled"] = self.is_shuffled
         data["volume"] = self.volume
         data["library_directory"] = self.library_directory
+        data["hardware_acceleration"] = self.hardware_acceleration
         
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
@@ -87,6 +93,7 @@ class State(rx.State):
                     self.is_shuffled = bool(data.get("is_shuffled", False))
                     self.volume = float(data.get("volume", 1.0))
                     self.library_directory = data.get("library_directory", "")
+                    self.hardware_acceleration = bool(data.get("hardware_acceleration", True))
             except Exception as e:
                 # Use console.error for client-side debugging if needed, 
                 # or just handle it silently as we do here.
