@@ -4,17 +4,30 @@
 [Setup]
 AppName=Melodius
 AppVersion=1.2.0
+AppPublisher=MadhushaNirmal
+AppPublisherURL=https://github.com/Madhusha2003
+AppSupportURL=https://github.com/Madhusha2003/Melodius/issues
+AppUpdatesURL=https://github.com/Madhusha2003/Melodius
 DefaultDirName={autopf}\Melodius
 DefaultGroupName=Melodius
-UninstallDisplayIcon={app}\python_11\python.exe
+UninstallDisplayIcon={app}\Melodius.exe
 Compression=lzma2/ultra64
 SolidCompression=yes
 OutputDir=dist
 OutputBaseFilename=Melodius_Setup
 PrivilegesRequired=admin
+SetupIconFile=assets\melodius_icon_512.ico
+WizardImageFile=assets\melodius_icon_1024.png
+WizardSmallImageFile=assets\melodius_icon_512.png
+WizardStyle=modern
+VersionInfoVersion=1.2.0
+VersionInfoCompany=Madhusha
+VersionInfoDescription=Melodius Desktop Music Player
+VersionInfoProductName=Melodius
 
 [Files]
 ; 1. The Main Launcher
+Source: "Melodius.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "melodius_3ports.py"; DestDir: "{app}"; Flags: ignoreversion
 
 ; 2. Embedded Python Environment (Crucial for portability)
@@ -31,11 +44,11 @@ Source: "frontend\rxconfig.py"; DestDir: "{app}\frontend"; Flags: ignoreversion
 Source: "frontend\.web\build\client\*"; DestDir: "{app}\frontend\.web\build\client"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Melodius"; FileName: "{app}\python_11\pythonw.exe"; Parameters: """{app}\melodius_3ports.py"""; WorkingDir: "{app}"
-Name: "{commondesktop}\Melodius"; FileName: "{app}\python_11\pythonw.exe"; Parameters: """{app}\melodius_3ports.py"""; WorkingDir: "{app}"
+Name: "{group}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
+Name: "{commondesktop}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\python_11\pythonw.exe"; Parameters: """{app}\melodius_3ports.py"""; Description: "Launch Melodius"; Flags: postinstall nowait
+Filename: "{app}\Melodius.exe"; Description: "Launch Melodius"; Flags: postinstall nowait
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);

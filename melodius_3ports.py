@@ -5,6 +5,8 @@ import subprocess
 import atexit
 import socket
 import json
+import ctypes
+import threading
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -176,6 +178,43 @@ def kill_process_tree(pid: int):
         pass
 
 
+def set_win32_icon():
+    """Sets the window icon using Win32 API (runs in background)."""
+    import time
+    icon_path = os.path.join(BASE_DIR, "assets", "melodius_icon_512.ico")
+    if not os.path.exists(icon_path):
+        return
+
+    # LoadImageW constants
+    IMAGE_ICON = 1
+    LR_LOADFROMFILE = 0x00000010
+    LR_DEFAULTSIZE = 0x00000040
+    
+    try:
+        h_icon = ctypes.windll.user32.LoadImageW(
+            None, icon_path, IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE
+        )
+        if not h_icon:
+            return
+
+        # Wait for the window to appear and set its icon
+        def find_and_set():
+            for _ in range(40): # Try for 20 seconds
+                hwnd = ctypes.windll.user32.FindWindowW(None, "Melodius")
+                if hwnd:
+                    WM_SETICON = 0x0080
+                    ICON_SMALL = 0
+                    ICON_BIG = 1
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, h_icon)
+                    ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG, h_icon)
+                    break
+                time.sleep(0.5)
+        
+        threading.Thread(target=find_and_set, daemon=True).start()
+    except Exception:
+        pass
+
+
 def cleanup():
     """Called on exit – tears down all server processes."""
     print("\nShutting down Melodius...")
@@ -266,12 +305,12 @@ def start_backend(port: int):
     
     # CLEANUP: Remove old junction if it exists to prevent path conflicts
     if os.path.exists(backend_dest):
-        try: subprocess.run(['cmd', '/c', 'rd', '/s', '/q', 'backend'], cwd=APPDATA_DIR)
+        try: subprocess.run(['cmd', '/c', 'rd', '/s', '/q', 'backend'], cwd=APPDATA_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception: pass
         
     try:
         subprocess.run(['cmd', '/c', 'mklink', '/J', 'backend', backend_src], 
-                        cwd=APPDATA_DIR, check=True, capture_output=True)
+                        cwd=APPDATA_DIR, check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception as e:
         print(f"Warning: Could not create FastAPI junction: {e}")
 
@@ -288,7 +327,8 @@ def start_backend(port: int):
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        encoding='utf-8'
+        encoding='utf-8',
+        creationflags=subprocess.CREATE_NO_WINDOW
     )
     import threading
     threading.Thread(target=log_streamer, args=(backend_process.stdout, "FastAPI"), daemon=True).start()
@@ -302,7 +342,8 @@ def start_frontend_static(port: int):
     static_process = subprocess.Popen(
         [PYTHON, "-m", "http.server", str(port), "--directory", static_dir],
         cwd=APPDATA_DIR,
-        env=os.environ.copy()
+        env=os.environ.copy(),
+        creationflags=subprocess.CREATE_NO_WINDOW
     )
 
 
@@ -324,12 +365,12 @@ def start_reflex_backend(port: int, ui_port: int, api_port: int):
     
     # CLEANUP: Remove old junction if it exists
     if os.path.exists(app_module_dest):
-        try: subprocess.run(['cmd', '/c', 'rd', '/s', '/q', 'ui_melodius'], cwd=APPDATA_DIR)
+        try: subprocess.run(['cmd', '/c', 'rd', '/s', '/q', 'ui_melodius'], cwd=APPDATA_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
         except Exception: pass
         
     try:
         subprocess.run(['cmd', '/c', 'mklink', '/J', 'ui_melodius', app_module_src], 
-                        cwd=APPDATA_DIR, check=True, capture_output=True)
+                        cwd=APPDATA_DIR, check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception as e:
         print(f"Warning: Could not create Reflex junction: {e}")
 
@@ -346,7 +387,8 @@ def start_reflex_backend(port: int, ui_port: int, api_port: int):
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        encoding='utf-8'
+        encoding='utf-8',
+        creationflags=subprocess.CREATE_NO_WINDOW
     )
     import threading
     threading.Thread(target=log_streamer, args=(reflex_backend_process.stdout, "Reflex"), daemon=True).start()
@@ -389,13 +431,26 @@ def main():
 
     # Open the desktop window
     print(f"Launching desktop window -> {APP_URL}")
-    webview.create_window(
+    
+    # --- Windows Taskbar & Icon Fix ---
+    try:
+        myappid = 'Madhusha.Melodius.1.2.0' # Unique ID for taskbar grouping
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception:
+        pass
+    # ----------------------------------
+
+    window = webview.create_window(
         "Melodius",
         APP_URL,
         width=1280,
         height=800,
         min_size=(1280, 800),
     )
+
+    # Start the icon setter in the background
+    set_win32_icon()
+
     webview.start(
         private_mode=False,
         debug=False,

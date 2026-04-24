@@ -4,7 +4,7 @@ from ..state.base import State
 def header():
     return rx.hstack(
         rx.hstack(
-            rx.icon(tag="audio-waveform", size=32, color="var(--accent-9)"),
+            rx.image(src="melodius_icon_512.png", width="32px", height="32px", border_radius="6px"),
             rx.heading("Melodius", size="7", font_weight="bold", letter_spacing="-0.02em"),
             spacing="3",
             align_items="center",
