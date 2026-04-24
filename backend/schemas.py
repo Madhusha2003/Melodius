@@ -10,6 +10,7 @@ class TrackBase(BaseModel):
     duration: float = 0.0
     vibe_vector: Optional[str] = None
     url: Optional[str] = None
+    cover_url: Optional[str] = None
 
 class TrackCreate(TrackBase):
     pass

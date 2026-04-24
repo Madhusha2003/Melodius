@@ -74,12 +74,60 @@ def player_bar():
             rx.hstack(
                 # Left: Track Info
                 rx.hstack(
-                    rx.vstack(
-                        rx.text(State.current_track.title, font_weight="bold", size="3"),
-                        rx.text(State.current_track.artist, size="2", color="gray"),
-                        align_items="start",
-                        width="200px",
+                    rx.cond(
+                        State.current_track.cover_url,
+                        rx.image(
+                            src=State.current_track.cover_url,
+                            key=State.current_track.url, # Force re-render on track change
+                            width="56px",
+                            height="56px",
+                            border_radius="12px",
+                            object_fit="cover",
+                            box_shadow="0 4px 12px rgba(0,0,0,0.4)",
+                        ),
+                        rx.center(
+                            rx.icon(tag="music", size=24, color="gray"),
+                            width="56px",
+                            height="56px",
+                            background="var(--gray-3)",
+                            border_radius="12px",
+                        )
                     ),
+                    rx.vstack(
+                        # Title Marquee
+                        rx.box(
+                            rx.text(
+                                rx.cond(
+                                    State.current_track.title != "",
+                                    f"{State.current_track.title} \u00A0\u00A0\u00A0\u00A0\u00A0 {State.current_track.title} \u00A0\u00A0\u00A0\u00A0\u00A0 ",
+                                    ""
+                                ),
+                                font_weight="bold", 
+                                size="3", 
+                                class_name="marquee-text"
+                            ),
+                            class_name="marquee-container",
+                        ),
+                        # Artist Marquee
+                        rx.box(
+                            rx.text(
+                                rx.cond(
+                                    State.current_track.artist != "",
+                                    f"{State.current_track.artist} \u00A0\u00A0\u00A0\u00A0\u00A0 {State.current_track.artist} \u00A0\u00A0\u00A0\u00A0\u00A0 ",
+                                    ""
+                                ),
+                                size="2", 
+                                color="gray",
+                                class_name="marquee-text"
+                            ),
+                            class_name="marquee-container",
+                        ),
+                        align_items="start",
+                        width="250px",
+                        spacing="1",
+                    ),
+                    spacing="4",
+                    align_items="center",
                 ),
                 rx.spacer(),
                 
@@ -102,13 +150,17 @@ def player_bar():
                 width="100%",
                 align_items="center",
             ),
-            position="fixed",
-            bottom="0",
             width="100%",
-            padding="1em 2em",
-            margin_bottom="1em",
-            background="rgba(10, 10, 10, 0.9)",
-            backdrop_filter="blur(20px)",
-            border_top="1px solid rgba(255,255,255,0.08)",
+            padding="1.5em 3em",
+            background=rx.color_mode_cond(
+                light="rgba(255, 255, 255, 0.95)",
+                dark="rgba(10, 10, 10, 0.95)"
+            ),
+            border_top="1px solid",
+            border_color=rx.color_mode_cond(
+                light="rgba(0,0,0,0.1)",
+                dark="rgba(255,255,255,0.1)"
+            ),
+            z_index="100",
         )
     )

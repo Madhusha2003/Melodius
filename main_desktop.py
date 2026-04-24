@@ -3,6 +3,24 @@ import sys
 import time
 import subprocess
 import atexit
+import socket
+import psutil
+
+
+def wait_for_server(name, port, timeout=30):
+    """Wait for a local port to become active."""
+    print(f"Waiting for {name} to be ready on port {port}...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            with socket.socket(socket.socket().family, socket.socket().type) as s:
+                s.settimeout(0.5)
+                s.connect(("127.0.0.1", port))
+                print(f"{name} is ready!")
+                return True
+        except:
+            time.sleep(0.5)
+    return False
 
 try:
     import webview
@@ -62,18 +80,22 @@ def main():
     start_backend()
     start_frontend()
 
-    print("Waiting 10 seconds for servers to start...")
-    time.sleep(10)
+    backend_ok = wait_for_server("Backend", 8001)
+    frontend_ok = wait_for_server("Frontend", 3000)
+
+    if not backend_ok or not frontend_ok:
+        print("Error: Servers failed to start in time.")
+        sys.exit(1)
 
     print("Opening Desktop Window...")
     # Open PyWebView targeting the Reflex app port
-    window = webview.create_window('Melodius', 'http://localhost:3000', width=1280, height=800)
+    window = webview.create_window('Melodius', 'http://localhost:3000', width=1280, height=800, min_size=(1280, 800))
     
     # WebView2 (Windows Edge) strictly blocks auto-playing audio contexts which breaks the EQ
     # We pass chromium flags to disable this policy
     webview.start(
         private_mode=False, 
-        debug=True,
+        debug=False,
         # Allow EQ AudioContext to run immediately
         user_agent="MelodiusDesktop/1.0",
     )

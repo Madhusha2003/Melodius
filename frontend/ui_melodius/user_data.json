@@ -1,26 +1,29 @@
 {
     "eq": {
-        "band_64": 7,
-        "band_125": 2,
-        "band_250": -2,
-        "band_500": -3,
-        "band_1k": -3,
-        "band_2k": 0,
-        "band_4k": 3,
-        "band_8k": 10,
-        "bass_boost": 50,
-        "clarity": 0,
+        "band_64": -12,
+        "band_125": -12,
+        "band_250": -12,
+        "band_500": -12,
+        "band_1k": -12,
+        "band_2k": -12,
+        "band_4k": -12,
+        "band_8k": -12,
+        "bass_boost": 49,
+        "clarity": 25,
         "virtualizer": 49,
         "loudness": 0,
         "is_active": false
     },
     "last_played_track": {
-        "title": "Alan Walker - Unity (Acoustic)",
-        "artist": "Unknown Artist",
-        "url": "http://127.0.0.1:8001/tracks/stream/14?t=0.23319480288483685",
-        "duration": 208.639975
+        "id": 107,
+        "title": "Habits (Stay High) - The Chainsmokers Radio Edit",
+        "artist": "Tove Lo, The Chainsmokers",
+        "url": "http://127.0.0.1:8001/tracks/stream/107?t=0.4632075818500708",
+        "cover_url": "http://127.0.0.1:8001/tracks/cover/107",
+        "duration": 263.47102040816327
     },
-    "last_played_time": 205.42,
+    "last_played_time": 0.0,
     "is_shuffled": true,
-    "volume": 1.0
+    "volume": 0.28,
+    "library_directory": ""
 }
