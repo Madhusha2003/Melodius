@@ -10,7 +10,7 @@ def splash_screen() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.box(
-                rx.icon(tag="audio-waveform", size=80, color="var(--accent-9)"),
+                rx.image(src="melodius_icon_1024.png", width="160px", height="160px", border_radius="24px"),
                 class_name="splash-logo",
             ),
             rx.heading("Melodius", size="9", font_weight="bold", letter_spacing="-0.04em", margin_top="0.5em"),
