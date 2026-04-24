@@ -15,4 +15,4 @@ class Track(Base):
     @property
     def url(self):
         # Stream the source file directly from the FastAPI backend securely
-        return f"http://localhost:8001/stream/{self.id}"
+        return f"http://127.0.0.1:8001/tracks/stream/{self.id}"

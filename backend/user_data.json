@@ -1,0 +1,11 @@
+{
+    "last_played_track": {
+        "title": "10_000_Hours__with_Justin_Bieber_",
+        "artist": "Unknown Artist",
+        "url": "http://localhost:8001/stream/3?t=0.4554917447797985",
+        "duration": 167.7322448979592
+    },
+    "last_played_time": 2.906036,
+    "is_shuffled": false,
+    "volume": 1.0
+}

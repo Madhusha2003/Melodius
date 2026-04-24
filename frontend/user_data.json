@@ -1,0 +1,11 @@
+{
+    "last_played_track": {
+        "title": "MORE",
+        "artist": "K/DA/ Madison Beer/ (G)I-DLE/ Lexie Liu/ Jaira Burns/ Seraphine/ League Of Legends",
+        "url": "http://localhost:8001/stream/72?t=0.34371330245731824",
+        "duration": 217.08804988662132
+    },
+    "last_played_time": 0.0,
+    "is_shuffled": true,
+    "volume": 1.0
+}

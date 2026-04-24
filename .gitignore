@@ -22,6 +22,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+**/.states/
+**/.web/
+
 
 # Virtual environments
 .env
@@ -31,6 +34,7 @@ ENV/
 env.bak/
 venv.bak/
 .venv_frontend
+.venv_backend
 
 # Environment Variables
 .env
