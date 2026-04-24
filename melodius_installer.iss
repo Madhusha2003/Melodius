@@ -24,6 +24,7 @@ VersionInfoVersion=1.2.0
 VersionInfoCompany=Madhusha
 VersionInfoDescription=Melodius Desktop Music Player
 VersionInfoProductName=Melodius
+LicenseFile=LICENSE.txt
 
 [Files]
 ; 1. The Main Launcher
