@@ -1,17 +1,18 @@
 import reflex as rx
+from pydantic import BaseModel
 import httpx
 import random
 import asyncio
 from datetime import datetime, timedelta
 import time
 from .components.equalizer.equalizer import equalizer_ui
-from .components.visualizer.visualizer import visualizer_ui
 from .components.equalizer.equalizer import EqualizerState
+from .components.search_bar.search_bar import search_bar_ui
 import json
 import os
 
 DATA_FILE = "user_data.json"
-class Track(rx.Base):
+class Track(BaseModel):
     title: str
     artist: str
     url: str
@@ -19,6 +20,18 @@ class Track(rx.Base):
 
 class State(rx.State):
     tracks: list[Track] = []
+    search_query: str = ""
+    
+    @rx.var
+    def filtered_tracks(self) -> list[Track]:
+        if not self.search_query:
+            return self.tracks
+        query = self.search_query.lower()
+
+        return [
+            track for track in self.tracks
+            if query in track.title.lower() or query in track.artist.lower()
+        ]
     
     # Persistent Data
     last_played_track: dict = {}
@@ -148,7 +161,7 @@ class State(rx.State):
         """
         yield rx.call_script(script)
         await asyncio.sleep(0.1)
-        yield State.tick_time()
+        yield State.tick_time
         from .components.equalizer.equalizer import EqualizerState
         yield EqualizerState.apply_eq()
 
@@ -241,24 +254,32 @@ class State(rx.State):
         self.save_data()
 
     def next_track(self):
-        if not self.tracks or not self.current_track.title:
+        current_list = self.filtered_tracks
+        if not current_list or not self.current_track.title:
             return
             
         if self.is_shuffled:
-            next_idx = random.randint(0, len(self.tracks) - 1)
+            next_idx = random.randint(0, len(current_list) - 1)
         else:
-            current_idx = next((i for i, t in enumerate(self.tracks) if t.url == self.current_track.url.split('?')[0]), -1)
-            next_idx = (current_idx + 1) % len(self.tracks)
+            current_idx = next((i for i, t in enumerate(current_list) if t.url == self.current_track.url.split('?')[0]), -1)
+            if current_idx == -1:
+                next_idx = 0
+            else:
+                next_idx = (current_idx + 1) % len(current_list)
             
-        self.play_track(self.tracks[next_idx])
+        return self.play_track(current_list[next_idx])
 
     def prev_track(self):
-        if not self.tracks or not self.current_track.title:
+        current_list = self.filtered_tracks
+        if not current_list or not self.current_track.title:
             return
             
-        current_idx = next((i for i, t in enumerate(self.tracks) if t.url == self.current_track.url.split('?')[0]), -1)
-        prev_idx = (current_idx - 1) % len(self.tracks)
-        self.play_track(self.tracks[prev_idx])
+        current_idx = next((i for i, t in enumerate(current_list) if t.url == self.current_track.url.split('?')[0]), -1)
+        if current_idx == -1:
+            prev_idx = len(current_list) - 1
+        else:
+            prev_idx = (current_idx - 1) % len(current_list)
+        return self.play_track(current_list[prev_idx])
 
     def start_dragging(self, value: list[float]):
         self.is_dragging = True
@@ -268,20 +289,16 @@ class State(rx.State):
         self.volume = value[0] / 100
         self.save_data()
 
-    def go_to_time(self, time: float):
-        self.current_time = time
-
     def seek(self, value: list[float]):
         """Standard seeker with an immediate hardware refresh."""
         target_time = float(value[0])
         self.is_dragging = False
         self.is_playing = True  
         self.last_played_time = target_time
+        self.current_time = target_time
         self.save_data()
-        # 🚀 We do two things: 1. Jump the music, 2. Tell the UI to refresh immediately
         return [
             rx.call_script(f"document.getElementById('audio-player').currentTime = {target_time};"),
-            State.go_to_time(target_time),
             State.tick_time 
         ]
     
@@ -363,9 +380,10 @@ def index() -> rx.Component:
                     rx.hstack(
                         rx.heading("Your Library", size="5", font_weight="600"),
                         rx.spacer(),
+                        search_bar_ui(State.search_query, State.set_search_query),
                         rx.button(
                             rx.icon(tag="folder_sync"),
-                            "Scan Local Library",
+                            "Scan Music",
                             on_click=State.scan_music,
                             size="2",
                             variant="soft",
@@ -381,7 +399,7 @@ def index() -> rx.Component:
                     ),
                     rx.box(
                         rx.foreach(
-                            State.tracks,
+                            State.filtered_tracks,
                             lambda track: rx.hstack(
                                 rx.box(
                                     rx.icon(tag="play", size=18),
@@ -423,28 +441,33 @@ def index() -> rx.Component:
                     border_radius="24px",
                     box_shadow="0 10px 40px rgba(0,0,0,0.1)",
                     flex="1",
+                    height="100%",
                 ),
                 
-                # Right Side: Visualizer and Equalizer Component
+                # Right Side: Equalizer Component
                 rx.cond(
                     State.current_track.url != "",
                     rx.vstack(
-                        visualizer_ui(),
                         equalizer_ui(),
                         width="100%",
-                        flex="1",
-                        spacing="6",
+                        flex="0.5", # Ensures this takes up the other half
+                        height="100%", # Forces height to match the Library box
+                        padding="2.5em", # Add padding here to match the Library side
+                        background="var(--gray-2)", # Match the Library background
+                        border_radius="24px",
+                        justify_content="center",
                     )
                 ),
                 
                 # Container settings
                 width="100%",
-                max_width="1200px",
+                max_width="95%",
                 align_items="stretch",
                 spacing="6",
-                margin_bottom="150px", # Space for bottom player
+                padding_bottom="160px", # Space for bottom player
             ),
             width="100%",
+            flex="1",
             on_mount=State.fetch_tracks,
         ),
 
@@ -470,7 +493,11 @@ def index() -> rx.Component:
                             rx.button(rx.icon(tag="shuffle"), variant="ghost", color_scheme=rx.cond(State.is_shuffled, "accent", "gray"), on_click=State.toggle_shuffle),
                             rx.button(rx.icon(tag="skip_back"), variant="ghost", on_click=State.prev_track),
                             rx.button(
-                                rx.icon(tag=rx.cond(State.is_playing, "pause", "play")), 
+                                rx.cond(
+                                    State.is_playing,
+                                    rx.icon(tag="pause"),
+                                    rx.icon(tag="play"),
+                                ),
                                 size="3", variant="solid", radius="full", 
                                 on_click=State.toggle_play,
                                 box_shadow=rx.cond(State.is_playing, "0 0 15px rgba(66, 153, 225, 0.6)", "none"),
@@ -555,6 +582,7 @@ def index() -> rx.Component:
                 bottom="0",
                 width="100%",
                 padding="1em 2em",
+                margin_bottom="1em",
                 background="rgba(10, 10, 10, 0.9)",
                 backdrop_filter="blur(20px)",
                 border_top="1px solid rgba(255,255,255,0.08)",
@@ -562,7 +590,9 @@ def index() -> rx.Component:
         ),
         background="black",
         color="white",
-        min_height="100vh",
+        height="100vh",
+        display="flex",
+        flex_direction="column",
         overflow="hidden",
     on_mount=[State.fetch_tracks, State.hide_ghost_box],
     )

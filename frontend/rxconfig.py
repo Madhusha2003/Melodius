@@ -1,5 +1,7 @@
 import reflex as rx
 
+from reflex.plugins import SitemapPlugin
+
 config = rx.Config(
     app_name="frontend",
     # Tell the frontend to talk to the Reflex internal backend on port 8000
@@ -12,6 +14,7 @@ config = rx.Config(
     ],
     # Disable the sitemap plugin to remove the warning message
     disable_plugins=[
-        "reflex.plugins.sitemap.SitemapPlugin",
+        SitemapPlugin,
     ],
+    state_auto_setters=True,
 )

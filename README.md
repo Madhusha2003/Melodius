@@ -12,7 +12,6 @@ Melodius is a modern music player application with a FastAPI backend and a Refle
 - **frontend**: 
     - Main page with tracks list and player
     - Equalizer with basic functionality
-    - Visualizer with basic functionality
 
 - **backend**: 
     - FastAPI server
@@ -22,7 +21,6 @@ Melodius is a modern music player application with a FastAPI backend and a Refle
 ## Bugs
 
 - Eq automatically cannot initialize when reloaded. (Low priority)
-- Visualizer is small windows just to show something. (Low priority)
 - Reading / finding songs cannot read metadata. (Medium priority)
 
 
