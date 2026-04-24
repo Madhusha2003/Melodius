@@ -7,6 +7,7 @@ import socket
 import json
 import ctypes
 import threading
+import shutil
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -230,26 +231,58 @@ def cleanup():
 atexit.register(cleanup)
 
 
-def patch_frontend_ports(reflex_api_port: int):
-    """Patch ONLY the environment config files (env.json and reflex-env-*.js)."""
-    import re
-    dot_web = os.path.join(BASE_DIR, "frontend", ".web")
-    assets = os.path.join(dot_web, "build", "client", "assets")
+def sync_web_assets():
+    """Sync static assets from installation to AppData for writable access."""
+    src_dir = os.path.join(BASE_DIR, "frontend", ".web", "build", "client")
+    dest_dir = os.path.join(APPDATA_DIR, "web_assets")
     
-    target_files = []
-    # 1. env.json
-    if os.path.exists(os.path.join(dot_web, "env.json")):
-        target_files.append(os.path.join(dot_web, "env.json"))
-    # 2. reflex-env-*.js
-    if os.path.exists(assets):
-        for f in os.listdir(assets):
-            if f.startswith("reflex-env-") and f.endswith(".js"):
-                target_files.append(os.path.join(assets, f))
+    # Also sync env.json (it's often in .web, but we need it in the server root)
+    env_json_src = os.path.join(BASE_DIR, "frontend", ".web", "env.json")
+    env_json_dest = os.path.join(dest_dir, "env.json")
 
-    if not target_files:
+    if not os.path.exists(src_dir):
+        print(f"Error: Static assets not found at {src_dir}")
         return
 
-    print(f"Patching {len(target_files)} environment config files...")
+    print(f"Syncing web assets to {dest_dir}...")
+    try:
+        # To avoid stale hashed files from previous builds, we clear the dest
+        if os.path.exists(dest_dir):
+            shutil.rmtree(dest_dir)
+        
+        shutil.copytree(src_dir, dest_dir)
+        
+        # Copy env.json into the static root
+        if os.path.exists(env_json_src):
+            shutil.copy2(env_json_src, env_json_dest)
+            
+    except Exception as e:
+        print(f"Warning: Web asset sync failed: {e}")
+
+
+def patch_frontend_ports(reflex_api_port: int):
+    """Patch ONLY the environment config files in the writable AppData copy."""
+    import re
+    web_assets = os.path.join(APPDATA_DIR, "web_assets")
+    assets_sub = os.path.join(web_assets, "assets")
+    
+    target_files = []
+    # 1. env.json (now in web_assets root)
+    env_json = os.path.join(web_assets, "env.json")
+    if os.path.exists(env_json):
+        target_files.append(env_json)
+        
+    # 2. reflex-env-*.js
+    if os.path.exists(assets_sub):
+        for f in os.listdir(assets_sub):
+            if f.startswith("reflex-env-") and f.endswith(".js"):
+                target_files.append(os.path.join(assets_sub, f))
+
+    if not target_files:
+        print("  No environment files found to patch in AppData.")
+        return
+
+    print(f"Patching {len(target_files)} environment config files in AppData...")
     
     # In 3-port mode, the browser only needs to know the Reflex port.
     # Data API calls are handled server-side in api_3.py.
@@ -335,10 +368,10 @@ def start_backend(port: int):
 
 
 def start_frontend_static(port: int):
-    """Launch a simple HTTP server for the static files."""
+    """Launch a simple HTTP server for the static files from AppData."""
     global static_process
     print(f"Starting Static Hosting (port {port})...")
-    static_dir = os.path.join(BASE_DIR, "frontend", ".web", "build", "client")
+    static_dir = os.path.join(APPDATA_DIR, "web_assets")
     static_process = subprocess.Popen(
         [PYTHON, "-m", "http.server", str(port), "--directory", static_dir],
         cwd=APPDATA_DIR,
@@ -353,7 +386,6 @@ def start_reflex_backend(port: int, ui_port: int, api_port: int):
     print(f"Starting Reflex (port {port})...")
     
     # 1. Sync config to AppData
-    import shutil
     src_config = os.path.join(BASE_DIR, "frontend", "rxconfig.py")
     dest_config = os.path.join(APPDATA_DIR, "rxconfig.py")
     try: shutil.copy2(src_config, dest_config)
@@ -412,7 +444,8 @@ def main():
         print(f"FATAL ERROR: {e}")
         sys.exit(1)
 
-    # Patch frontend assets to use the dynamic Reflex API port
+    # Sync and Patch frontend assets in AppData
+    sync_web_assets()
     patch_frontend_ports(REFLEX_API_PORT)
 
     # Launch servers
