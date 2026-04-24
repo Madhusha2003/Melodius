@@ -16,5 +16,4 @@ config = rx.Config(
     disable_plugins=[
         SitemapPlugin,
     ],
-    state_auto_setters=True,
 )

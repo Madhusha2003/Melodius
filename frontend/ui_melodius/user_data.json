@@ -15,14 +15,14 @@
         "is_active": false
     },
     "last_played_track": {
-        "id": 190,
-        "title": "Old Town Road - Diplo Remix",
-        "artist": "Lil Nas X, Billy Ray Cyrus, Diplo",
-        "url": "http://127.0.0.1:8001/tracks/stream/190?t=0.4312587756199048",
-        "cover_url": "http://127.0.0.1:8001/tracks/cover/190",
-        "duration": 204.12081632653062
+        "id": 348,
+        "title": "Your Song - Cheat Codes Remix",
+        "artist": "Rita Ora, Cheat Codes",
+        "url": "http://127.0.0.1:8001/tracks/stream/348?t=0.09601222334385218",
+        "cover_url": "http://127.0.0.1:8001/tracks/cover/348",
+        "duration": 215.0138775510204
     },
-    "last_played_time": 84.810884,
+    "last_played_time": 7.609738,
     "is_shuffled": true,
     "volume": 0.28,
     "library_directory": "",

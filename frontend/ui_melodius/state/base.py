@@ -44,6 +44,16 @@ class State(rx.State):
             track for track in self.tracks
             if query in track.title.lower() or query in track.artist.lower()
         ]
+
+    def set_search_query(self, value: str):
+        """Explicit setter for search_query (replaces auto_setter)."""
+        self.search_query = value
+
+    def set_library_directory(self, value: str):
+        """Explicit setter for library_directory (replaces auto_setter)."""
+        self.library_directory = value
+        self.save_data()
+
     def toggle_settings(self):
         self.show_settings = not self.show_settings
 
