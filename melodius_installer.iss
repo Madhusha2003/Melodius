@@ -1,13 +1,20 @@
 ; Melodius Inno Setup Script
 ; Optimized for 3-Port Portable Architecture
 
+#include "app_id.iss"
+#define MyAppVersion "1.0.0"
+
 [Setup]
 AppName=Melodius
-AppVersion=1.2.0
+AppId={#MyAppId}
+AppVersion={#MyAppVersion}
 AppPublisher=MadhushaNirmal
 AppPublisherURL=https://github.com/Madhusha2003
 AppSupportURL=https://github.com/Madhusha2003/Melodius/issues
 AppUpdatesURL=https://github.com/Madhusha2003/Melodius
+AppCopyright=Copyright (C) 2024 Madhusha Nirmal
+AppContact=https://github.com/Madhusha2003
+AppComments=Melodius Desktop Music Player - A modern, high-performance music player.
 DefaultDirName={autopf}\Melodius
 DefaultGroupName=Melodius
 UninstallDisplayIcon={app}\Melodius.exe
@@ -20,10 +27,11 @@ SetupIconFile=assets\melodius_icon_512.ico
 WizardImageFile=assets\melodius_icon_1024.png
 WizardSmallImageFile=assets\melodius_icon_512.png
 WizardStyle=modern
-VersionInfoVersion=1.2.0
+VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany=Madhusha
 VersionInfoDescription=Melodius Desktop Music Player
 VersionInfoProductName=Melodius
+VersionInfoCopyright=Copyright (C) 2024 Madhusha Nirmal
 LicenseFile=LICENSE.txt
 
 [Files]
@@ -49,7 +57,7 @@ Name: "{group}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
 Name: "{commondesktop}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\Melodius.exe"; Description: "Launch Melodius"; Flags: postinstall nowait
+Filename: "{app}\Melodius.exe"; Description: "Launch Melodius"; WorkingDir: "{app}"; Flags: postinstall nowait runasoriginaluser skipifsilent
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -69,3 +77,7 @@ begin
     SaveStringToFile(PthFilePath, PathContent, False);
   end;
 end;
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
+Type: filesandordirs; Name: "{userappdata}\Melodius"

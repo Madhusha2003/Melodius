@@ -1,0 +1,2 @@
+; Example app_id.iss
+#define MyAppId "{{GENERATED-GUID-HERE}"
