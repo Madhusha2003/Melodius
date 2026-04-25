@@ -80,4 +80,3 @@ end;
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
-Type: filesandordirs; Name: "{userappdata}\Melodius"
