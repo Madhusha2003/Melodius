@@ -426,11 +426,36 @@ def start_reflex_backend(port: int, ui_port: int, api_port: int):
     threading.Thread(target=log_streamer, args=(reflex_backend_process.stdout, "Reflex"), daemon=True).start()
 
 
+def check_single_instance():
+    """Prevent multiple instances using a Windows Mutex."""
+    # Using a Global prefix makes it work across sessions (optional)
+    mutex_name = "Global\\Melodius_SingleInstance_Mutex"
+    
+    # CreateMutexW returns a handle to the mutex
+    # ERROR_ALREADY_EXISTS = 183
+    mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+    last_error = ctypes.windll.kernel32.GetLastError()
+    
+    if last_error == 183: # ERROR_ALREADY_EXISTS
+        # Try to find the existing window and bring it to front
+        hwnd = ctypes.windll.user32.FindWindowW(None, "Melodius")
+        if hwnd:
+            # 9 = SW_RESTORE, 5 = SW_SHOW
+            ctypes.windll.user32.ShowWindow(hwnd, 9)
+            ctypes.windll.user32.SetForegroundWindow(hwnd)
+        sys.exit(0)
+    
+    return mutex_handle
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 def main():
     global UI_PORT, REFLEX_API_PORT, FASTAPI_PORT, APP_URL
+    # Keep the mutex handle alive for the duration of the process
+    _mutex = check_single_instance()
+    
     print("--- Melodius Desktop Launcher (3-Port Mode) ---")
     setup_hardware_acceleration()
 
