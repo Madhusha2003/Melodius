@@ -12,7 +12,10 @@ def settings_view():
                 "left": 0,
                 "width": "100vw",
                 "height": "100vh",
-                "background": "rgba(0, 0, 0, 0.7)",
+                "background": rx.color_mode_cond(
+                    light="rgba(0, 0, 0, 0.4)",
+                    dark="rgba(0, 0, 0, 0.7)"
+                ),
                 "z-index": 1000,
                 "transition": "all 0.3s ease-in-out",
                 "opacity": rx.cond(State.show_settings, "1", "0"),

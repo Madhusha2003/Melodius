@@ -68,6 +68,8 @@ class State(rx.State):
         # Reset EQ initialized flags to force re-init when switching
         from ..components.equalizer.equalizer import EqualizerState
         from ..components.equalizer.equalizer_lab import EqualizerState as LabEqualizerState
+        if self.experimental_eq:
+            yield rx.toast("Maximize application window for better layout.")
         return [EqualizerState.reload_eq(), LabEqualizerState.reload_eq()]
 
     def clear_player_state(self):
@@ -250,6 +252,7 @@ class State(rx.State):
             yield rx.toast("Library storage cleared!")
         except Exception as e:
             yield rx.toast(f"Reset failed: {str(e)}")
+            
 
     @rx.event(background=True)
     async def find_player_by_url(self):

@@ -23,7 +23,10 @@ def splash_screen() -> rx.Component:
         ),
         width="100vw",
         height="100vh",
-        background="radial-gradient(circle at center, #111111 0%, #000000 100%)",
+        background=rx.color_mode_cond(
+            light="radial-gradient(circle at center, #FFFFFF 0%, #F0F0F0 100%)",
+            dark="radial-gradient(circle at center, #111111 0%, #000000 100%)"
+        ),
         position="fixed",
         top="0",
         left="0",
@@ -162,7 +165,6 @@ global_styles = {
 app = rx.App(
     style=global_styles,
     theme=rx.theme(
-        appearance="dark",
         has_background=True,
         accent_color="blue",
         gray_color="slate",
