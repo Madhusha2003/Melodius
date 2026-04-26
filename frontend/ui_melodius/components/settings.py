@@ -75,7 +75,6 @@ def settings_view():
                         spacing="2",
                     ),
                     width="100%",
-                    align_items="start",
                     spacing="2",
                     padding="1em",
                     background="var(--gray-3)",
@@ -129,7 +128,6 @@ def settings_view():
                             margin_top="0.5em"
                         ),
                         width="100%",
-                        align_items="start",
                     ),
                     width="100%",
                     padding="1em",
@@ -144,6 +142,37 @@ def settings_view():
             ),
             
             rx.divider(width="100%"),
+            
+            # Laboratory (Experimental)
+            rx.vstack(
+                rx.text("Laboratory (Experimental)", size="3", font_weight="bold"),
+                rx.vstack(
+                    rx.hstack(
+                        rx.vstack(
+                            rx.text("Experimental Equalizer", size="2"),
+                            rx.text("Enables the advanced multi-band lab equalizer with more precision.", size="1", color="gray"),
+                            align_items="start",
+                            spacing="0",
+                        ),
+                        rx.spacer(),
+                        rx.switch(
+                            checked=State.experimental_eq,
+                            on_change=State.toggle_experimental_eq,
+                            size="1"
+                        ),
+                        width="100%",
+                        align_items="center",
+                    ),
+                    width="100%",
+                    padding="1em",
+                    background="var(--gray-3)",
+                    border_radius="12px",
+                ),
+                width="100%",
+                align_items="start",
+                spacing="3",
+                padding_y="1em",
+            ),
             
             # Database Management
             rx.vstack(
@@ -161,7 +190,6 @@ def settings_view():
                         cursor="pointer",
                     ),
                     width="100%",
-                    align_items="start",
                     spacing="3",
                     padding="1em",
                     background="var(--gray-3)",
@@ -174,15 +202,6 @@ def settings_view():
             ),
             
             rx.spacer(),
-            
-            rx.button(
-                "Close Settings",
-                on_click=State.toggle_settings,
-                size="2",
-                variant="solid",
-                width="100%",
-                cursor="pointer",
-            ),
             
             style={
                 "position": "fixed",
@@ -198,6 +217,7 @@ def settings_view():
                 "z-index": 1001,
                 "transition": "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
                 "border": "1px solid var(--gray-4)",
+                "overflow-y": "auto",
             },
             spacing="4",
         ),

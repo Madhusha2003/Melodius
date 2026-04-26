@@ -19,6 +19,7 @@ def header():
             _hover={"background": "var(--gray-3)"},
         ),
         width="100%",
-        padding="2em",
+        padding_x="2em",
+        padding_y="1em",
         align_items="center",
     )

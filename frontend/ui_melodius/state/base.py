@@ -18,6 +18,7 @@ class State(rx.State):
     # Settings
     library_directory: str = ""
     hardware_acceleration: bool = True
+    experimental_eq: bool = False
     
     # Persistent Data
     last_played_track: dict = {}
@@ -61,6 +62,14 @@ class State(rx.State):
         self.hardware_acceleration = value
         self.save_data()
 
+    def toggle_experimental_eq(self, value: bool):
+        self.experimental_eq = value
+        self.save_data()
+        # Reset EQ initialized flags to force re-init when switching
+        from ..components.equalizer.equalizer import EqualizerState
+        from ..components.equalizer.equalizer_lab import EqualizerState as LabEqualizerState
+        return [EqualizerState.reload_eq(), LabEqualizerState.reload_eq()]
+
     def clear_player_state(self):
         """Resets the active player state."""
         self.current_track = Track(id=0, title="", artist="", url="", duration=0.0)
@@ -85,6 +94,7 @@ class State(rx.State):
         data["volume"] = self.volume
         data["library_directory"] = self.library_directory
         data["hardware_acceleration"] = self.hardware_acceleration
+        data["experimental_eq"] = self.experimental_eq
         
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
@@ -104,6 +114,7 @@ class State(rx.State):
                     self.volume = float(data.get("volume", 1.0))
                     self.library_directory = data.get("library_directory", "")
                     self.hardware_acceleration = bool(data.get("hardware_acceleration", True))
+                    self.experimental_eq = bool(data.get("experimental_eq", False))
             except Exception as e:
                 # Use console.error for client-side debugging if needed, 
                 # or just handle it silently as we do here.
@@ -142,23 +153,8 @@ class State(rx.State):
     @rx.event(background=True)
     async def select_library_directory(self):
         """Open a native folder selection dialog and reset DB on change."""
-        import tkinter as tk
-        from tkinter import filedialog
         import os
-        
-        # Initialize tkinter and hide main window
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
-        
-        # Open directory picker
-        directory = filedialog.askdirectory(
-            initialdir=self.library_directory or os.path.expanduser("~"),
-            title="Select Music Folder"
-        )
-        
-        # Clean up
-        root.destroy()
+        directory = self._open_native_folder_dialog()
         
         if directory:
             async with self:
@@ -178,6 +174,70 @@ class State(rx.State):
                 yield event
 
             yield rx.toast(f"Library updated and reset to: {directory}")
+
+    @staticmethod
+    def _open_native_folder_dialog() -> str:
+        """Open a native Windows folder picker using COM shell dialog.
+        
+        Falls back to tkinter if available (dev environment), and to a 
+        PowerShell picker as a last resort. Returns the selected path 
+        or an empty string if cancelled.
+        """
+        import sys
+
+        if sys.platform == "win32":
+            try:
+                return State._win32_folder_dialog()
+            except Exception:
+                pass
+
+        # Fallback: try tkinter (available in full Python installs)
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            directory = filedialog.askdirectory(title="Select Music Folder")
+            root.destroy()
+            return directory or ""
+        except ImportError:
+            pass
+
+        return ""
+
+    @staticmethod
+    def _win32_folder_dialog() -> str:
+        """Use the Windows Shell COM IFileDialog for a modern folder picker."""
+        import ctypes
+        import ctypes.wintypes
+        import subprocess
+
+        # --- Try the modern IFileDialog via PowerShell (clean & reliable) ---
+        # This gives us the nice modern folder picker without COM boilerplate.
+        ps_script = (
+            'Add-Type -AssemblyName System.Windows.Forms; '
+            '$f = New-Object System.Windows.Forms.FolderBrowserDialog; '
+            '$f.Description = "Select Music Folder"; '
+            '$f.ShowNewFolderButton = $true; '
+            '$topForm = New-Object System.Windows.Forms.Form; '
+            '$topForm.TopMost = $true; '
+            'if ($f.ShowDialog($topForm) -eq "OK") { $f.SelectedPath } '
+            'else { "" }'
+        )
+
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                timeout=120,  # generous timeout for user interaction
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            path = result.stdout.strip()
+            return path if path else ""
+        except Exception:
+            return ""
 
     async def reset_database(self):
         """Manually clear the library storage."""
@@ -213,8 +273,12 @@ class State(rx.State):
         yield rx.call_script(script)
         await asyncio.sleep(0.1)
         yield State.tick_time
-        from ..components.equalizer.equalizer import EqualizerState
-        yield EqualizerState.apply_eq()
+        if self.experimental_eq:
+            from ..components.equalizer.equalizer_lab import EqualizerState as LabEqualizerState
+            yield LabEqualizerState.apply_eq()
+        else:
+            from ..components.equalizer.equalizer import EqualizerState
+            yield EqualizerState.apply_eq()
 
     @rx.event(background=True)
     async def tick_time(self):
@@ -261,8 +325,13 @@ class State(rx.State):
         self.last_played_time = 0.0
         self.is_playing = True
         self.save_data()
-        from ..components.equalizer.equalizer import EqualizerState
-        return [State.tick_time, State.find_player_by_url, EqualizerState.initialize_engine()]
+        
+        if self.experimental_eq:
+            from ..components.equalizer.equalizer_lab import EqualizerState as LabEqualizerState
+            return [State.tick_time, State.find_player_by_url, LabEqualizerState.initialize_engine()]
+        else:
+            from ..components.equalizer.equalizer import EqualizerState
+            return [State.tick_time, State.find_player_by_url, EqualizerState.initialize_engine()]
 
     def toggle_play(self):
         if self.current_track.url != "":
@@ -270,9 +339,13 @@ class State(rx.State):
             if not self.is_playing:
                 self.save_data()
             else:
-                from ..components.equalizer.equalizer import EqualizerState
                 yield State.tick_time
-                yield EqualizerState.initialize_engine()
+                if self.experimental_eq:
+                    from ..components.equalizer.equalizer_lab import EqualizerState as LabEqualizerState
+                    yield LabEqualizerState.initialize_engine()
+                else:
+                    from ..components.equalizer.equalizer import EqualizerState
+                    yield EqualizerState.initialize_engine()
 
     def sync_time(self, data: dict):
         if not self.is_dragging:

@@ -462,7 +462,7 @@ def main():
     # Find and assign ports
     try:
         UI_PORT, REFLEX_API_PORT, FASTAPI_PORT = find_port_triplet()
-        APP_URL = f"http://127.0.0.1:{UI_PORT}"
+        APP_URL = f"http://127.0.0.1:{UI_PORT}/?cache_bust={int(time.time())}"
         print(f"Using ports: UI={UI_PORT}, Reflex={REFLEX_API_PORT}, DataAPI={FASTAPI_PORT}")
         save_ports(UI_PORT, REFLEX_API_PORT, FASTAPI_PORT)
     except Exception as e:
@@ -498,12 +498,25 @@ def main():
         pass
     # ----------------------------------
 
+    # Center the window on the primary screen
+    x, y = None, None
+    try:
+        screens = webview.screens
+        if screens:
+            primary = screens[0]
+            x = (primary.width - 1280) // 2
+            y = (primary.height - 800) // 2
+    except Exception:
+        pass
+
     window = webview.create_window(
         "Melodius",
         APP_URL,
         width=1280,
         height=800,
         min_size=(1280, 800),
+        x=x,
+        y=y
     )
 
     # Start the icon setter in the background

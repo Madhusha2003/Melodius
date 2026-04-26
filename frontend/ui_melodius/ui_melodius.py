@@ -5,6 +5,7 @@ from .components.library import library_view
 from .components.player import player_bar
 from .components.settings import settings_view
 from .components.equalizer.equalizer import equalizer_ui
+from .components.equalizer.equalizer_lab import equalizer_ui as equalizer_lab_ui
 
 def splash_screen() -> rx.Component:
     return rx.center(
@@ -50,34 +51,38 @@ def index() -> rx.Component:
 
             # Main Layout
             rx.box(
-                rx.center(
-                    rx.hstack(
-                        # Left side: Library
-                        library_view(),
-                        
-                        # Right Side: Equalizer
-                        rx.cond(
-                            State.current_track.url != "",
-                            rx.box(
+                rx.hstack(
+                    # Left side: Library
+                    library_view(),
+                    
+                    # Right Side: Equalizer
+                    rx.cond(
+                        State.current_track.url != "",
+                        rx.box(
+                            rx.cond(
+                                State.experimental_eq,
+                                equalizer_lab_ui(),
                                 equalizer_ui(),
-                                width="100%",
-                                flex="0.5",
-                            )
-                        ),
-                        
-                        width="100%",
-                        max_width="95%",
-                        height="100%",
-                        align_items="stretch",
-                        spacing="6",
+                            ),
+                            width="100%",
+                            flex="0.7", # Slightly wider EQ
+                        )
                     ),
+                    
                     width="100%",
+                    max_width="95%",
                     height="100%",
+                    align_items="stretch",
+                    spacing="6",
                 ),
+                width="100%",
+                height="100%",
+                display="flex",
+                justify_content="center",
+                padding_top="0", # Moves it higher
+                padding_bottom="1.5em",
                 flex="1",
                 overflow="hidden",
-                padding_top="1em",
-                padding_bottom="1em", 
             ),
 
             # Player Bar
