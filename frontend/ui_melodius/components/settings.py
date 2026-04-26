@@ -68,7 +68,7 @@ def settings_view():
                         ),
                         rx.button(
                             "Reset",
-                            on_click=lambda: State.set_library_directory(""),
+                            on_click=State.reset_library_folder,
                             variant="soft",
                             size="1",
                             width="80px",

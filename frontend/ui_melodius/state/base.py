@@ -55,6 +55,15 @@ class State(rx.State):
         self.library_directory = value
         self.save_data()
 
+    def reset_library_folder(self):
+        self.library_directory = ""
+        self.save_data()
+        return [
+            rx.toast("Library reset to default folder"),
+            State.reset_database,
+            State.fetch_tracks,
+        ]
+
     def toggle_settings(self):
         self.show_settings = not self.show_settings
 
@@ -154,28 +163,35 @@ class State(rx.State):
 
     @rx.event(background=True)
     async def select_library_directory(self):
-        """Open a native folder selection dialog and reset DB on change."""
+        """Open folder picker → reset DB → scan music."""
+
         import os
         directory = self._open_native_folder_dialog()
-        
-        if directory:
-            async with self:
-                # Normalize path for the OS
-                directory = os.path.abspath(directory)
-                self.library_directory = directory
-                self.save_data()
-            
-            # 1. Reset Database
-            yield rx.toast("Resetting database for new folder...")
-            await MelodiusAPI.clear_library()
-            async with self:
-                self.clear_player_state()
-            
-            # 2. Re-scan
-            async for event in self.scan_music():
-                yield event
 
-            yield rx.toast(f"Library updated and reset to: {directory}")
+        if not directory:
+            return
+
+        directory = os.path.abspath(directory)
+
+        async with self:
+            self.library_directory = directory
+            self.save_data()
+
+        # Step 1: reset DB
+        yield rx.toast("Resetting database for new folder...")
+
+        await MelodiusAPI.clear_library()
+
+        async with self:
+            self.clear_player_state()
+
+        # Step 2: scan music
+        yield rx.toast("Scanning music library...")
+
+        yield State.scan_music
+
+        # Step 3: finish
+        yield rx.toast(f"Library updated: {directory}")
 
     @staticmethod
     def _open_native_folder_dialog() -> str:
@@ -400,6 +416,11 @@ class State(rx.State):
     def set_volume(self, value: list[float]):
         self.volume = value[0] / 100
         self.save_data()
+
+        return rx.call_script(f"""
+        const p = document.getElementById('audio-player');
+        if (p) p.volume = {self.volume};
+        """)
 
     def seek(self, value: list[float]):
         target_time = float(value[0])
