@@ -1,13 +1,20 @@
 ; Melodius Inno Setup Script
 ; Optimized for 3-Port Portable Architecture
 
+#include "app_id.iss"
+#define MyAppVersion "1.0.0"
+
 [Setup]
 AppName=Melodius
-AppVersion=1.2.0
+AppId={#MyAppId}
+AppVersion={#MyAppVersion}
 AppPublisher=MadhushaNirmal
 AppPublisherURL=https://github.com/Madhusha2003
 AppSupportURL=https://github.com/Madhusha2003/Melodius/issues
 AppUpdatesURL=https://github.com/Madhusha2003/Melodius
+AppCopyright=Copyright (C) 2024 Madhusha Nirmal
+AppContact=https://github.com/Madhusha2003
+AppComments=Melodius Desktop Music Player - A modern, high-performance music player.
 DefaultDirName={autopf}\Melodius
 DefaultGroupName=Melodius
 UninstallDisplayIcon={app}\Melodius.exe
@@ -20,10 +27,11 @@ SetupIconFile=assets\melodius_icon_512.ico
 WizardImageFile=assets\melodius_icon_1024.png
 WizardSmallImageFile=assets\melodius_icon_512.png
 WizardStyle=modern
-VersionInfoVersion=1.2.0
+VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany=Madhusha
 VersionInfoDescription=Melodius Desktop Music Player
 VersionInfoProductName=Melodius
+VersionInfoCopyright=Copyright (C) 2024 Madhusha Nirmal
 LicenseFile=LICENSE.txt
 
 [Files]
@@ -44,14 +52,38 @@ Source: "frontend\rxconfig.py"; DestDir: "{app}\frontend"; Flags: ignoreversion
 ; 5. Pre-compiled Frontend Assets (Static Hosting)
 Source: "frontend\.web\build\client\*"; DestDir: "{app}\frontend\.web\build\client"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+; 6. Branding Assets (Required for runtime icons)
+Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; 7. WebView2 Bootstrapper (auto-installs if runtime is missing)
+Source: "tools\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+
 [Icons]
-Name: "{group}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
-Name: "{commondesktop}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"
+Name: "{group}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\melodius_icon_512.ico"; AppUserModelID: "Madhusha.Melodius.1.2.0"
+Name: "{commondesktop}\Melodius"; FileName: "{app}\Melodius.exe"; WorkingDir: "{app}"; IconFilename: "{app}\assets\melodius_icon_512.ico"; AppUserModelID: "Madhusha.Melodius.1.2.0"
 
 [Run]
-Filename: "{app}\Melodius.exe"; Description: "Launch Melodius"; Flags: postinstall nowait
+; Show a checkbox on the final page to install WebView2 (only visible if not already installed)
+Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; \
+  Description: "Install Microsoft Edge WebView2 Runtime (required for Melodius to display its interface)"; \
+  StatusMsg: "Installing Microsoft Edge WebView2 Runtime..."; \
+  Flags: postinstall runascurrentuser; Check: not IsWebView2Installed
 
 [Code]
+function IsWebView2Installed: Boolean;
+var
+  Version: string;
+begin
+  // Check for per-machine installation (64-bit)
+  Result := RegQueryStringValue(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', Version);
+  if Result then Exit;
+  // Check for per-machine installation (32-bit)
+  Result := RegQueryStringValue(HKLM, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', Version);
+  if Result then Exit;
+  // Check for per-user installation
+  Result := RegQueryStringValue(HKCU, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}', 'pv', Version);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   PathContent: string;
@@ -69,3 +101,6 @@ begin
     SaveStringToFile(PthFilePath, PathContent, False);
   end;
 end;
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"

@@ -68,3 +68,5 @@ desktop.ini
 *.swp
 *.swo
 *~
+# IDs
+app_id.iss

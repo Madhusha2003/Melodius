@@ -16,18 +16,79 @@ PRESETS: dict[str, list[int]] = {
     "Electronic": [4, 3, 1, 0, 2, 3, 4, 3],
 }
 
+FREQ_MAP = {
+    8: [64, 125, 250, 500, 1000, 2000, 4000, 8000],
+    12: [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 12000, 16000, 20000],
+    16: [31, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 12500, 16000, 20000]
+}
+
+def interpolate_bands(old_bands: list[int], new_count: int) -> list[int]:
+    if not old_bands:
+        return [0] * new_count
+    if len(old_bands) == new_count:
+        return old_bands
+    
+    new_bands = []
+    for i in range(new_count):
+        if new_count > 1:
+            pos = i * (len(old_bands) - 1) / (new_count - 1)
+        else:
+            pos = 0
+            
+        idx = int(pos)
+        frac = pos - idx
+        if idx >= len(old_bands) - 1:
+            new_bands.append(old_bands[-1])
+        else:
+            val = old_bands[idx] * (1 - frac) + old_bands[idx+1] * frac
+            new_bands.append(round(val))
+    return new_bands
+
+def format_freq(freq: int) -> str:
+    if freq >= 1000:
+        return f"{freq/1000:g}kHz"
+    return f"{freq}Hz"
+
+FREQ_MAP = {
+    8: [64, 125, 250, 500, 1000, 2000, 4000, 8000],
+    12: [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 12000, 16000, 20000],
+    16: [31, 63, 100, 160, 250, 400, 630, 1000, 1600, 2500, 4000, 6300, 10000, 12500, 16000, 20000]
+}
+
+def interpolate_bands(old_bands: list[int], new_count: int) -> list[int]:
+    if not old_bands:
+        return [0] * new_count
+    if len(old_bands) == new_count:
+        return old_bands
+    
+    new_bands = []
+    for i in range(new_count):
+        if new_count > 1:
+            pos = i * (len(old_bands) - 1) / (new_count - 1)
+        else:
+            pos = 0
+            
+        idx = int(pos)
+        frac = pos - idx
+        if idx >= len(old_bands) - 1:
+            new_bands.append(old_bands[-1])
+        else:
+            val = old_bands[idx] * (1 - frac) + old_bands[idx+1] * frac
+            new_bands.append(round(val))
+    return new_bands
+
+def format_freq(freq: int) -> str:
+    if freq >= 1000:
+        return f"{freq/1000:g}kHz"
+    return f"{freq}Hz"
+
 PRESET_OPTIONS = list(PRESETS.keys()) + ["Custom"]
 
 class EqualizerState(rx.State):
     """Handles the Web Audio API Equalizer directly connected to the React Player."""
-    band_64: int = 0
-    band_125: int = 0
-    band_250: int = 0
-    band_500: int = 0
-    band_1k: int = 0
-    band_2k: int = 0
-    band_4k: int = 0
-    band_8k: int = 0
+    eq_mode: str = "8"
+    bands: list[int] = [0, 0, 0, 0, 0, 0, 0, 0]
+    frequencies: list[str] = [format_freq(f) for f in FREQ_MAP[8]]
     
     # Advanced features
     bass_boost: int = 0
@@ -37,6 +98,7 @@ class EqualizerState(rx.State):
     
     is_eq_initialized: bool = False
     is_eq_active: bool = False
+
     selected_preset: str = "Flat"
 
     def reload_eq(self):
@@ -48,15 +110,31 @@ class EqualizerState(rx.State):
             try:
                 with open(DATA_FILE, "r") as f:
                     data = json.load(f)
-                    eq_data = data.get("eq", {})
-                    self.band_64 = eq_data.get("band_64", 0)
-                    self.band_125 = eq_data.get("band_125", 0)
-                    self.band_250 = eq_data.get("band_250", 0)
-                    self.band_500 = eq_data.get("band_500", 0)
-                    self.band_1k = eq_data.get("band_1k", 0)
-                    self.band_2k = eq_data.get("band_2k", 0)
-                    self.band_4k = eq_data.get("band_4k", 0)
-                    self.band_8k = eq_data.get("band_8k", 0)
+                    eq_data = data.get("eq_lab", {})
+                    
+                    self.eq_mode = str(eq_data.get("eq_mode", "8"))
+                    int_mode = int(self.eq_mode)
+                    self.frequencies = [format_freq(f) for f in FREQ_MAP.get(int_mode, FREQ_MAP[8])]
+                    
+                    saved_bands = eq_data.get("bands")
+                    
+                    if saved_bands and isinstance(saved_bands, list):
+                        self.bands = saved_bands
+                    else:
+                        # Fallback/Migration for old 8-band structure
+                        self.bands = [
+                            eq_data.get("band_64", 0),
+                            eq_data.get("band_125", 0),
+                            eq_data.get("band_250", 0),
+                            eq_data.get("band_500", 0),
+                            eq_data.get("band_1k", 0),
+                            eq_data.get("band_2k", 0),
+                            eq_data.get("band_4k", 0),
+                            eq_data.get("band_8k", 0)
+                        ]
+                        # If mode was changed to something else, interpolate the migrated bands
+                        if int_mode != 8:
+                            self.bands = interpolate_bands(self.bands, int_mode)
                     
                     self.bass_boost = eq_data.get("bass_boost", 0)
                     self.clarity = eq_data.get("clarity", 0)
@@ -77,15 +155,33 @@ class EqualizerState(rx.State):
             except:
                 pass
                 
-        data["eq"] = {
-            "band_64": self.band_64, "band_125": self.band_125, "band_250": self.band_250, "band_500": self.band_500,
-            "band_1k": self.band_1k, "band_2k": self.band_2k, "band_4k": self.band_4k, "band_8k": self.band_8k,
+        data["eq_lab"] = {
+            "eq_mode": self.eq_mode,
+            "bands": self.bands,
             "bass_boost": self.bass_boost, "clarity": self.clarity, "virtualizer": self.virtualizer, "loudness": self.loudness,
             "is_active": self.is_eq_active,
             "selected_preset": self.selected_preset
         }
         with open(DATA_FILE, "w") as f:
             json.dump(data, f, indent=4)
+
+    def change_mode(self, mode: str | list[str]):
+        if isinstance(mode, list):
+            mode = mode[0] if mode else "8"
+        if mode == self.eq_mode:
+            return
+            
+        new_mode_int = int(mode)
+        # Interpolate current settings to new band count to keep the curve
+        self.bands = interpolate_bands(self.bands, new_mode_int)
+        self.eq_mode = mode
+        self.frequencies = [format_freq(f) for f in FREQ_MAP[new_mode_int]]
+        self.is_eq_initialized = False # Force re-init of JS engine with new frequencies
+        self.save_eq_data()
+        
+        # If active, we need to re-initialize the audio context with new filters
+        if self.is_eq_active:
+            return self.initialize_engine()
 
     def update_advanced(self, value: list[int], knob_type: str):
         val = value[0] if isinstance(value, list) else value
@@ -106,22 +202,8 @@ class EqualizerState(rx.State):
 
     def update_band(self, value: list[int], band_idx: int):
         val = value[0] if isinstance(value, list) else value
-        if band_idx == 0:
-            self.band_64 = val
-        elif band_idx == 1:
-            self.band_125 = val
-        elif band_idx == 2:
-            self.band_250 = val
-        elif band_idx == 3:
-            self.band_500 = val
-        elif band_idx == 4:
-            self.band_1k = val
-        elif band_idx == 5:
-            self.band_2k = val
-        elif band_idx == 6:
-            self.band_4k = val
-        elif band_idx == 7:
-            self.band_8k = val
+        if 0 <= band_idx < len(self.bands):
+            self.bands[band_idx] = val
             
         # If user moves a slider manually, set preset to Custom
         self.selected_preset = "Custom"
@@ -139,20 +221,14 @@ class EqualizerState(rx.State):
         self.selected_preset = preset_name
         base_values = PRESETS[preset_name]
         
-        self.band_64 = base_values[0]
-        self.band_125 = base_values[1]
-        self.band_250 = base_values[2]
-        self.band_500 = base_values[3]
-        self.band_1k = base_values[4]
-        self.band_2k = base_values[5]
-        self.band_4k = base_values[6]
-        self.band_8k = base_values[7]
+        # Adapt 8-band preset to current mode
+        self.bands = interpolate_bands(base_values, int(self.eq_mode))
         
         self.save_eq_data()
         
         # Batch update JS
         js_calls = []
-        for i, val in enumerate(base_values):
+        for i, val in enumerate(self.bands):
             js_calls.append(f"if (window.updateEQ) window.updateEQ({i}, {val});")
             
         return rx.call_script("\n".join(js_calls))
@@ -170,9 +246,11 @@ class EqualizerState(rx.State):
             
         self.is_eq_initialized = True
         
+        freqs = FREQ_MAP.get(self.eq_mode, FREQ_MAP[8])
+        
         init_state_js = f"""
             window.savedEqState = {{
-                bands: [{self.band_64}, {self.band_125}, {self.band_250}, {self.band_500}, {self.band_1k}, {self.band_2k}, {self.band_4k}, {self.band_8k}],
+                bands: {self.bands},
                 bass: {self.bass_boost},
                 clarity: {self.clarity},
                 virtualizer: {self.virtualizer},
@@ -180,13 +258,13 @@ class EqualizerState(rx.State):
             }};
         """
         
-        main_script = """
+        main_script = f"""
             console.log('init_equalizer triggered');
             var p = document.getElementById('audio-player');
-            if (p) {
+            if (p) {{
                 // Check if already initialized to avoid multiple MediaElementSources
-                if (!window.audioContext) {
-                    try {
+                if (!window.audioContext) {{
+                    try {{
                         // Turn on cross origin
                         p.crossOrigin = "anonymous";
                         
@@ -194,56 +272,49 @@ class EqualizerState(rx.State):
                         window.source = window.audioContext.createMediaElementSource(p);
                         
                         window.filters = [];
-                        // Using standard 8-band frequencies
-                        var freqs = [64, 125, 250, 500, 1000, 2000, 4000, 8000];
+                        // Using dynamic band frequencies
+                        var freqs = {freqs};
                         var lastNode = window.source;
                         
-                        for (var i=0; i<freqs.length; i++) {
+                        for (var i=0; i<freqs.length; i++) {{
                             var filter = window.audioContext.createBiquadFilter();
                             filter.type = 'peaking';
                             filter.frequency.value = freqs[i];
-                            filter.Q.value = 1.41; // Sharper bandwidth for 8-band
+                            filter.Q.value = {1.41 if self.eq_mode == 8 else 2.0 if self.eq_mode == 12 else 2.8}; // Sharper bandwidth for more bands
                             filter.gain.value = 0; // Flat initially
                             window.filters.push(filter);
                             
                             lastNode.connect(filter);
                             lastNode = filter;
-                        }
+                        }}
 
                         // ADVANCED FX NODES
-                        // 1. Bass Boost Node
-                        // Changed from 'lowshelf' to 'peaking' to avoid boosting mud/sub rumbles that distort
                         window.bassNode = window.audioContext.createBiquadFilter();
                         window.bassNode.type = 'peaking';
-                        window.bassNode.frequency.value = 80; // Raised slightly to catch more low-end body
-                        window.bassNode.Q.value = 0.7; // Widened the curve so it boosts more musical frequencies
+                        window.bassNode.frequency.value = 80; 
+                        window.bassNode.Q.value = 0.7; 
                         window.bassNode.gain.value = 0;
                         
-                        // 1b. Vocal Dip (Anti-Masking)
-                        // When bass gets huge, it "masks" the midrange voices. We dip 250Hz slightly to make room.
                         window.vocalDipNode = window.audioContext.createBiquadFilter();
                         window.vocalDipNode.type = 'peaking';
                         window.vocalDipNode.frequency.value = 250;
                         window.vocalDipNode.Q.value = 0.5;
                         window.vocalDipNode.gain.value = 0;
 
-                        // 2. Clarity (Treble/Presence) Node
                         window.clarityNode = window.audioContext.createBiquadFilter();
                         window.clarityNode.type = 'highshelf';
                         window.clarityNode.frequency.value = 5000;
                         window.clarityNode.gain.value = 0;
 
-                        // 3. Virtualizer (Algorithmic Reverb via Convolver)
                         var sampleRate = window.audioContext.sampleRate;
-                        var length = sampleRate * 1.5; // 1.5 second tail
+                        var length = sampleRate * 1.5;
                         var impulse = window.audioContext.createBuffer(2, length, sampleRate);
-                        for (var c = 0; c < 2; c++) {
+                        for (var c = 0; c < 2; c++) {{
                             var channelData = impulse.getChannelData(c);
-                            for (var i = 0; i < length; i++) {
-                                // Exponential decay noise for fake room acoustics
+                            for (var i = 0; i < length; i++) {{
                                 channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3.0);
-                            }
-                        }
+                            }}
+                        }}
                         window.convolver = window.audioContext.createConvolver();
                         window.convolver.buffer = impulse;
                         window.wetGain = window.audioContext.createGain();
@@ -251,7 +322,6 @@ class EqualizerState(rx.State):
                         window.dryGain = window.audioContext.createGain();
                         window.dryGain.gain.value = 1;
 
-                        // 4. Loudness (Compressor & Makeup Gain)
                         window.compressor = window.audioContext.createDynamicsCompressor();
                         window.compressor.threshold.value = -3;
                         window.compressor.knee.value = 10;
@@ -261,91 +331,80 @@ class EqualizerState(rx.State):
                         window.makeupGain = window.audioContext.createGain();
                         window.makeupGain.gain.value = 1;
 
-                        // CONNECT SIGNAL GRAPH (Routing)
-                        // Source -> Bass -> Vocal Dip -> EQ Array -> Clarity
+                        // CONNECT SIGNAL GRAPH
                         window.source.connect(window.bassNode);
                         window.bassNode.connect(window.vocalDipNode);
                         window.vocalDipNode.connect(window.filters[0]);
-                        window.filters[7].connect(window.clarityNode);
+                        window.filters[window.filters.length - 1].connect(window.clarityNode);
                         
-                        // Split for Virtualizer (Reverb)
                         window.clarityNode.connect(window.dryGain);
                         window.clarityNode.connect(window.convolver);
                         window.convolver.connect(window.wetGain);
 
-                        // Mix back into Compressor
                         window.dryGain.connect(window.compressor);
                         window.wetGain.connect(window.compressor);
 
-                        // Compressor to Makeup Gain to Speakers
                         window.compressor.connect(window.makeupGain);
                         window.makeupGain.connect(window.audioContext.destination);
 
-                        // Attach EQ parameters update function
-                        window.updateEQ = function(idx, val) {
-                            if (window.filters && window.filters[idx]) {
+                        window.updateEQ = function(idx, val) {{
+                            if (window.filters && window.filters[idx]) {{
                                 window.filters[idx].gain.value = val;
-                            }
-                        };
+                            }}
+                        }};
                         
-                        // Attach Advanced FX parameters update function
-                        window.updateAdvanced = function(type, val) {
+                        window.updateAdvanced = function(type, val) {{
                             if (!window.audioContext || !window.source) return;
-                            if (type === 'bass') {
-                                // Cap boost to +16dB (a safe, noticeable medium)
+                            if (type === 'bass') {{
                                 window.bassNode.gain.value = (val / 100) * 16; 
-                                // Dip the muddy vocals dynamically as bass increases (max -3dB) to prevent complete loss
                                 window.vocalDipNode.gain.value = -(val / 100) * 3;
-                            } else if (type === 'clarity') {
-                                window.clarityNode.gain.value = (val / 100) * 12; // Boost up to +12dB
-                            } else if (type === 'virtualizer') {
+                            }} else if (type === 'clarity') {{
+                                window.clarityNode.gain.value = (val / 100) * 12;
+                            }} else if (type === 'virtualizer') {{
                                 window.wetGain.gain.value = (val / 100) * 0.8;
-                                window.dryGain.gain.value = 1 - ((val / 100) * 0.3); // Slight dry volume dip 
-                            } else if (type === 'loudness') {
-                                window.compressor.threshold.value = -3 - ((val / 100) * 21); // Press hard to -24 threshold
-                                window.makeupGain.gain.value = 1 + ((val / 100) * 3); // Recover volume x1 up to x4
-                            }
-                        };
+                                window.dryGain.gain.value = 1 - ((val / 100) * 0.3);
+                            }} else if (type === 'loudness') {{
+                                window.compressor.threshold.value = -3 - ((val / 100) * 21);
+                                window.makeupGain.gain.value = 1 + ((val / 100) * 3);
+                            }}
+                        }};
 
-                        // Attach bypass function
-                        window.toggleEQ = function(isActive) {
+                        window.toggleEQ = function(isActive) {{
                             if (!window.audioContext || !window.source) return;
                             window.source.disconnect();
-                            if (isActive) {
-                                // Connect source directly to bass node block to resume chain
+                            if (isActive) {{
                                 window.source.connect(window.bassNode);
-                            } else {
-                                // Bypass EQ entirely, route straight to destination speakers
+                            }} else {{
                                 window.source.connect(window.audioContext.destination);
-                            }
-                        };
+                            }}
+                        }};
                         
-                        // --- APPLY INITIAL VALUES IMMEDIATELY ---
-                        if (window.savedEqState) {
-                            for (var i=0; i<8; i++) {
+                        if (window.savedEqState) {{
+                            for (var i=0; i<window.filters.length; i++) {{
                                 window.updateEQ(i, window.savedEqState.bands[i]);
-                            }
+                            }}
                             window.updateAdvanced('bass', window.savedEqState.bass);
                             window.updateAdvanced('clarity', window.savedEqState.clarity);
                             window.updateAdvanced('virtualizer', window.savedEqState.virtualizer);
                             window.updateAdvanced('loudness', window.savedEqState.loudness);
-
-                        }
+                        }}
                         
                         console.log('Equalizer Web Audio API initialized successfully with saved state!');
-                    } catch(e) {
+                    }} catch(e) {{
                         console.error('Failed to initialize AudioContext:', e);
-                    }
-                } 
+                    }}
+                }} 
                 
-                if (window.audioContext && window.audioContext.state === 'suspended') {
+                if (window.audioContext && window.audioContext.state === 'suspended') {{
                     window.audioContext.resume();
                     console.log('AudioContext resumed');
-                }
-            } else {
+                }}
+            }} else {{
                 console.error('Could not find element with id audio-player');
-            }
+            }}
         """
+        
+        return rx.call_script(init_state_js + main_script)
         
         # Combine init_state_js with main_script
         return rx.call_script(init_state_js + main_script)
@@ -361,25 +420,25 @@ class EqualizerState(rx.State):
             js_bool = 'true' if self.is_eq_active else 'false'
             return rx.call_script(f"if (window.toggleEQ) window.toggleEQ({js_bool});")
 
-def eq_slider(name: str, band_idx: int, val: int) -> rx.Component:
+def eq_slider(freq_name: str, band_idx: int) -> rx.Component:
     return rx.vstack(
-        rx.text(val, size="1", font_weight="bold", color="var(--accent-11)"),
+        rx.text(EqualizerState.bands[band_idx], size="1", font_weight="bold", color="var(--accent-11)"),
         rx.slider(
-            default_value=[val],
-            value=[val],
+            value=[EqualizerState.bands[band_idx]],
             min=-12,
             max=12,
             orientation="vertical",
-            # on_change updates UI text in real-time, on_value_commit fires the final JS to prevent extreme lag
             on_change=lambda v: EqualizerState.update_band(v, band_idx),
             on_value_commit=lambda v: EqualizerState.update_band(v, band_idx),
-            height="150px",
+            height="140px",
             color_scheme="blue",
             cursor="pointer"
         ),
-        rx.text(name, size="1", color="gray", font_weight="bold"),
+        rx.text(freq_name, size="1", color="gray", font_weight="bold", white_space="nowrap"),
         align_items="center",
-        spacing="2"
+        spacing="2",
+        width="45px",
+        flex_shrink="0",
     )
 
 def round_knob(state_val: int, name: str, update_action):
@@ -420,7 +479,7 @@ def round_knob(state_val: int, name: str, update_action):
                 z_index="10" 
             ),
             position="relative",
-            width="55px", height="55px",
+            width="50px", height="50px",
         ),
         rx.text(name, size="1", color="gray", font_weight="bold"),
         rx.text(f"{state_val}%", size="1", font_weight="bold", color="var(--accent-11)"),
@@ -449,44 +508,80 @@ def equalizer_ui() -> rx.Component:
                 ),
                 width="100%",
                 align_items="center",
+                justify="between",
                 padding_bottom="0.8em",
                 border_bottom="1px solid var(--gray-4)",
                 margin_bottom="0.8em"
             ),
             
-            # PRESET SELECTOR
+            # CONTROL BAR (MODE & PRESET)
             rx.hstack(
-                rx.spacer(),
+    # Left side (Bands)
+    rx.hstack(
+        rx.text(
+            "Bands",
+            size="1",
+            color="gray",
+            font_weight="bold",
+        ),
+        rx.select(
+            items=["8", "12", "16"],
+            value=EqualizerState.eq_mode,
+            on_change=EqualizerState.change_mode,
+            size="1",
+            width="70px",
+        ),
+        align_items="center",   # 👈 vertical center
+        spacing="2",
+    ),
+
+    rx.spacer(),
+
+    # Right side (Preset)
+    rx.hstack(
+        rx.text(
+            "Preset",
+            size="1",
+            color="gray",
+            font_weight="bold",
+        ),
+        rx.select(
+            items=PRESET_OPTIONS,
+            value=EqualizerState.selected_preset,
+            on_change=EqualizerState.apply_preset,
+            size="2",
+            width="140px",
+        ),
+        align_items="center",   # 👈 vertical center
+        spacing="2",
+    ),
+
+    width="100%",
+    align_items="center",       # 👈 main vertical alignment
+    justify_content="space-between",
+    margin_bottom="0.5em",
+    padding_x="1em",
+),
+            # DYNAMIC EQ SLIDERS
+            rx.box(
                 rx.hstack(
-                    rx.text("Preset", size="1", color="gray", font_weight="bold"),
-                    rx.select(
-                        items=PRESET_OPTIONS,
-                        value=EqualizerState.selected_preset,
-                        on_change=EqualizerState.apply_preset,
-                        size="2",
-                        width="140px",
+                    rx.foreach(
+                        EqualizerState.bands,
+                        lambda val, idx: eq_slider(EqualizerState.frequencies[idx], idx)
                     ),
-                    align_items="center",
                     spacing="2",
+                    justify="start",
+                    width="auto",
+                    padding_x="1em",
                 ),
                 width="100%",
-                padding_x="1em",
-                margin_bottom="0.5em",
-            ),
-            
-            # 8-BAND EQ SLIDERS
-            rx.hstack(
-                eq_slider("64Hz", 0, EqualizerState.band_64),
-                eq_slider("125Hz", 1, EqualizerState.band_125),
-                eq_slider("250Hz", 2, EqualizerState.band_250),
-                eq_slider("500Hz", 3, EqualizerState.band_500),
-                eq_slider("1kHz", 4, EqualizerState.band_1k),
-                eq_slider("2kHz", 5, EqualizerState.band_2k),
-                eq_slider("4kHz", 6, EqualizerState.band_4k),
-                eq_slider("8kHz", 7, EqualizerState.band_8k),
-                spacing="4",
-                justify="center",
-                width="100%"
+                overflow_x="scroll",
+                padding_bottom="1.5em",
+                css={
+                    "&::-webkit-scrollbar": {"height": "6px"},
+                    "&::-webkit-scrollbar-track": {"background": "transparent"},
+                    "&::-webkit-scrollbar-thumb": {"background": "var(--gray-6)", "border-radius": "10px"}
+                }
             ),
 
             rx.divider(margin_y="1em", width="100%", bg="var(--gray-4)"),
@@ -504,8 +599,10 @@ def equalizer_ui() -> rx.Component:
 
             width="100%",
             height="100%",
-            align_items="center",
-            justify="center",
+            align_items="stretch",
+            spacing="1",
+            overflow_y="auto",
+            padding_bottom="0.5em"
         ),
         width="100%",
         height="100%",
@@ -521,5 +618,4 @@ def equalizer_ui() -> rx.Component:
         ),
         border_radius="24px",
         box_shadow="0 10px 40px rgba(0,0,0,0.05)",
-        
     )

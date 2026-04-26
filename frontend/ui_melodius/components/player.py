@@ -33,19 +33,19 @@ def player_controls():
                 style={
                     "& .rt-SliderTrack": {
                         "height": "4px !important",
-                        "background-color": "rgba(255, 255, 255, 0.2) !important",
+                        "background-color": "var(--gray-a4) !important",
                         "cursor": "pointer !important",
                     },
                     "& .rt-SliderRange": {
                         "height": "4px !important",
-                        "background-color": "white !important",
+                        "background-color": "var(--accent-9) !important",
                         "transition": "background-color 0.1s ease",
                     },
                     "& .rt-SliderThumb": {
                         "opacity": "0 !important", 
                         "width": "12px !important",
                         "height": "12px !important",
-                        "background-color": "white !important",
+                        "background-color": "var(--gray-12) !important",
                         "box-shadow": "0 2px 4px rgba(0,0,0,0.5) !important",
                         "transition": "opacity 0.1s ease !important",
                         "cursor": "pointer !important",
@@ -145,7 +145,9 @@ def player_bar():
                         width="100px"
                     ),
                     width="200px",
-                    justify="end",
+                    align_items="center",
+                    justify_content="flex-end",
+                    spacing="2",
                 ),
                 width="100%",
                 align_items="center",

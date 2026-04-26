@@ -99,7 +99,7 @@ def library_view():
             )
         ),
         width="100%",
-        padding="2.5em",
+        padding="1.5em",
         background=rx.color_mode_cond(
             light="rgba(255, 255, 255, 0.9)", 
             dark="rgba(15, 15, 15, 0.9)"
