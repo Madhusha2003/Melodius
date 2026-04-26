@@ -310,16 +310,30 @@ class EqualizerState(rx.State):
                         // Attach bypass function
                         window.toggleEQ = function(isActive) {
                             if (!window.audioContext || !window.source) return;
-                            window.source.disconnect();
+                            try {
+                                window.source.disconnect();
+                            } catch(e) {}
+
                             if (isActive) {
-                                // Connect source directly to bass node block to resume chain
+                                // FULL EQ CHAIN
                                 window.source.connect(window.bassNode);
                             } else {
-                                // Bypass EQ entirely, route straight to destination speakers
+                                // PURE BYPASS ONLY (no EQ nodes involved)
                                 window.source.connect(window.audioContext.destination);
                             }
                         };
                         
+                        // Reset function
+                        window.resetAudioEngine = function() {
+                            if (window.audioContext) {
+                                window.audioContext.close().then(() => {
+                                    window.audioContext = null;
+                                    console.log("Old AudioContext closed.");
+                                    // The React component's useEffect will call initialize_engine again
+                                });
+                            }
+                        };
+
                         // --- APPLY INITIAL VALUES IMMEDIATELY ---
                         if (window.savedEqState) {
                             for (var i=0; i<8; i++) {

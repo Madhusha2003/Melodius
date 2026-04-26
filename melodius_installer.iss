@@ -2,7 +2,7 @@
 ; Optimized for 3-Port Portable Architecture
 
 #include "app_id.iss"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.2.0"
 
 [Setup]
 AppName=Melodius
@@ -51,6 +51,7 @@ Source: "frontend\rxconfig.py"; DestDir: "{app}\frontend"; Flags: ignoreversion
 
 ; 5. Pre-compiled Frontend Assets (Static Hosting)
 Source: "frontend\.web\build\client\*"; DestDir: "{app}\frontend\.web\build\client"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "frontend\.web\env.json"; DestDir: "{app}\frontend\.web"; Flags: ignoreversion
 
 ; 6. Branding Assets (Required for runtime icons)
 Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -121,7 +121,8 @@ def save_ports(u_p, r_p, a_p):
 # Hardware acceleration (reads user preference from user_data.json)
 # ---------------------------------------------------------------------------
 def setup_hardware_acceleration():
-    data_path = os.path.join("frontend", "ui_melodius", "user_data.json")
+    # Hardware acceleration preference is stored in the user_data.json in AppData
+    data_path = os.path.join(APPDATA_DIR, "user_data.json")
     hw_accel = True  # Default: enabled
     if os.path.exists(data_path):
         try:
@@ -236,7 +237,7 @@ def sync_web_assets():
     src_dir = os.path.join(BASE_DIR, "frontend", ".web", "build", "client")
     dest_dir = os.path.join(APPDATA_DIR, "web_assets")
     
-    # Also sync env.json (it's often in .web, but we need it in the server root)
+    # Also sync env.json (Reflex uses this to find the backend)
     env_json_src = os.path.join(BASE_DIR, "frontend", ".web", "env.json")
     env_json_dest = os.path.join(dest_dir, "env.json")
 
